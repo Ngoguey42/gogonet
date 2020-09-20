@@ -10,7 +10,6 @@ const q = p.slice(0, -3) + "json"
 console.log('> json output path:', q);
 
 var j = []
-var state = null
 var pname_of_pid = {}
 
 function bind_get(val, propname) {
@@ -57,31 +56,76 @@ fs.readFile(p, (err, buffer) => {
 
   });
 
+  /* demoFile.gameEvents.on("event", e => {
+   *   if (
+   *     e.name.includes("item") ||
+   *     e.name.includes("weapon") ||
+   *     e.name.includes("grenade") ||
+   *     e.name.includes("damage") ||
+   *     e.name.includes("flashbang") ||
+   *     e.name.includes("bomb") ||
+   *     e.name == "player_spawn" ||
+   *     e.name == "player_jump" ||
+   *     e.name == "player_hurt" ||
+   *     e.name == "player_team" ||
+   *     e.name == "player_footstep" ||
+   *     e.name == "player_death" ||
+   *     e.name == "player_blind" ||
+   *     e.name == "other_death" ||
+   *     e.name == "hltv_status" ||
+   *     e.name == "hltv_chase" ||
+   *     e.name == "round_mvp"  ||
+   *     false
+   *   )
+   *     return
+   *   console.log(demoFile.currentTime, e)
+   *   if (!(
+   *     e.name == "server_cvar" ||
+   *     e.name == "cs_pre_restart" ||
+   *     e.name == "round_prestart" ||
+   *     e.name == "round_start" ||
+   *     e.name == "round_poststart" ||
+   *     e.name == "begin_new_match" ||
+   *     e.name == "cs_round_start_beep" ||
+   *     e.name == "round_announce_match_start" ||
+   *     e.name == "round_freeze_end" ||
+   *     e.name == "cs_round_final_beep" ||
+   *     e.name == "player_disconnect" ||
+   *     e.name == "announce_phase_end" ||
+   *     e.name == "cs_win_panel_round" ||
+   *     e.name == "round_end" ||
+   *     e.name == "player_connect" ||
+   *     e.name == "player_connect_full"  ||
+   *     false
+   *   ))
+   *     demoFile.cancel()
+   * })*/
+
+  demoFile.gameEvents.on("round_officially_ended", e => {
+    idx = demoFile.teams[2].score + demoFile.teams[3].score
+    j.push({"ev": "round_officially_ended", "round_idx": idx, "t": demoFile.currentTime})
+    console.log(j[j.length - 1], j.length, demoFile.teams[2].score, demoFile.teams[3].score)
+  });
+
   demoFile.gameEvents.on("round_end", e => {
-    console.log('> %d round_end (%d/%d)', demoFile.currentTime, demoFile.teams[2].score, demoFile.teams[3].score)
+    idx = demoFile.teams[2].score + demoFile.teams[3].score
+    j.push({"ev": "round_end", "round_idx": idx, "t": demoFile.currentTime})
+    console.log(j[j.length - 1], j.length, demoFile.teams[2].score, demoFile.teams[3].score)
   });
 
   demoFile.gameEvents.on("round_freeze_end", e => {
-    const old_state = state;
-    state = "moving";
-    if (old_state == null || old_state == "start") {
-      idx = demoFile.teams[2].score + demoFile.teams[3].score
-      j.push({"ev": "round_freeze_end", "round_idx": idx, "t": demoFile.currentTime})
-      console.log(j[j.length - 1], j.length)
-    }
+    idx = demoFile.teams[2].score + demoFile.teams[3].score
+    j.push({"ev": "round_freeze_end", "round_idx": idx, "t": demoFile.currentTime})
+    console.log(j[j.length - 1], j.length)
   });
 
   demoFile.gameEvents.on("round_start", e => {
-    old_state = state;
-    state = "start";
     idx = demoFile.teams[2].score + demoFile.teams[3].score
     j.push({"ev": "round_start", "round_idx": idx, "t": demoFile.currentTime})
     console.log(j[j.length - 1], j.length, demoFile.teams[2].score, demoFile.teams[3].score)
   });
 
   demoFile.gameEvents.on("bomb_planted", e => {
-    old_state = state;
-    state = "planted";
     idx = demoFile.teams[2].score + demoFile.teams[3].score
     j.push({"ev": "bomb_planted", "round_idx": idx, "t": demoFile.currentTime})
     console.log(j[j.length - 1], j.length)

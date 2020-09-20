@@ -9,6 +9,10 @@ import constants as con
 
 def segment_rounds(evs):
     # State machine to identify full rounds with a sound chain of events
+    # A round have at least: `round_start`, `round_freeze_end`, `round_end` and `round_officially_ended`
+    # bomb events might occur after `round_officially_ended`
+    # Some rounds might be squeezed because of missing `round_start` etc..
+    # Some events might be simultaneous (like bomb event and end of round)
     rounds = []
     latest_timings = {}
     latest_unfreeze_ridx = None # Only trust round idx at unfreeze
@@ -18,22 +22,33 @@ def segment_rounds(evs):
         if b is None: return True
         return not (a > b)
 
-    def flush():
+    def flush(tail=False):
         nonlocal latest_timings, latest_unfreeze_ridx
         t = latest_timings
+        # print("Flush!", latest_unfreeze_ridx, t)
         if (t.get("round_start") is not None and
-            t.get("round_freeze_end") is not None
+            t.get("round_freeze_end") is not None and
+            t.get("round_end") is not None and
+
+            # Tolerate missing official end if last round
+            ((t.get("round_officially_ended") is not None) or (tail is True))
         ):
             assert latest_unfreeze_ridx is not None
             assert not_bigger(t.get("round_start"), t.get("round_freeze_end")), t
             assert not_bigger(t.get("round_freeze_end"), t.get("bomb_planted")), t
             assert not_bigger(t.get("bomb_planted"), t.get("bomb_defused")), t
             assert not_bigger(t.get("bomb_planted"), t.get("bomb_exploded")), t
+            assert not_bigger(t.get("bomb_defused"), t.get("round_end")), t
             if "bomb_defused" in t:
                 assert "bomb_planted" in t
             if "bomb_exploded" in t:
                 assert "bomb_planted" in t
                 assert "bomb_defused" not in t
+            if rounds:
+                assert latest_unfreeze_ridx > rounds[-1]["round_idx"]
+                assert t["round_start"] >= rounds[-1]["round_end"]
+            if "round_officially_ended" in t:
+                del t["round_officially_ended"]
             rounds.append(dict(
                 round_idx=latest_unfreeze_ridx,
                 **t
@@ -44,12 +59,16 @@ def segment_rounds(evs):
     for ev in evs:
         if ev["ev"] == "round_start":
             flush()
-        assert latest_timings.get(ev["ev"]) == None, (latest_timings, ev)
+        if ev["ev"] == "round_freeze_end" and ev["t"] == latest_timings.get("round_end"):
+            # Round freeze end simultaneous to end of game on some servers. Let's ignore that event
+            continue
+        if ev["ev"] in latest_timings is not None:
+            flush()
         latest_timings[ev["ev"]] = ev["t"]
         if ev["ev"] == "round_freeze_end":
             latest_unfreeze_ridx = ev["round_idx"]
+    flush(tail=True)
 
-    flush()
     return rounds
 
 def path_of_json(ename, egidx):
@@ -61,6 +80,14 @@ def path_of_vod(ename, egidx):
     prefix = con.DB_PREFIX[os.path.sep]
     mname = con.GAMES[(ename, egidx)].mname
     return os.path.join(prefix, f"{ename}.mp4")
+
+def time_totxt(v):
+    sign = "" if (v >= 0) else "-"
+    v = abs(v)
+    h = v // 3600
+    m = (v - h * 3600) // 60
+    s = (v - h * 3600 - m * 60)
+    return f"{sign}{h:02.0f}:{m:02.0f}:{s:06.3f}"
 
 def load_json(ename, egidx):
     path = path_of_json(ename, egidx)
@@ -84,15 +111,16 @@ def load_json(ename, egidx):
     dfticks = pd.DataFrame(rows).set_index(["t", "pid"], verify_integrity=True)
     # print(dfticks)
 
-
     rows = []
     for r in segment_rounds([ev for ev in j if ev["ev"] != "tickend"]):
+        # print("**********************************************************************")
+        # pprint(r)
         round_idx = r.pop("round_idx")
         rows.extend([
             dict(ev=k, t=v, round_idx=round_idx)
             for k, v in r.items()
         ])
-    dfevs = pd.DataFrame(rows).set_index("t", verify_integrity=True)
+    dfevs = pd.DataFrame(rows) #.set_index("t", verify_integrity=True)
     # print(dfevs)
 
     return dfticks, dfevs
