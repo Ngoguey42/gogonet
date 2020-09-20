@@ -128,3 +128,5 @@ test-reports
 
 node_modules/
 package-lock.json
+events_plot
+mm_occlusions
