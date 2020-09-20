@@ -20,10 +20,35 @@ def _t(t):
     h, m, s = map(float, t.split(":"))
     return h * 3600 + m * 60 + s
 
+# ESL vertigo mirage nuke
+# ESL train overpass inferno dust2
+
+OVERLAYS = (
+    dict(
+        oname="ESL_0",
+        approx_minimap_slice=(slice(18, 18 + 383), slice(38, 38 + 352)),
+    ),
+    dict(
+        oname="9to5_0",
+        approx_minimap_slice=(slice(26, 26 + 362), slice(43, 43 + 362)),
+    ),
+)
+def _inflate():
+    for o in OVERLAYS:
+        sli, slj = o["approx_minimap_slice"]
+        o["approx_minimap_height"] = sli.stop - sli.start
+        o["approx_minimap_width"] = slj.stop - slj.start
+_inflate()
+OVERLAYS = _toser({
+    d["oname"]: d
+    for d in OVERLAYS
+})
+
 ENCOUNTERS = (
+    # First batch******************************************************************************** **
     dict(
         ename="2343670_big-vs-godsent-esl-pro-league-season-12-europe",
-        caster_type="ESL_0",
+        oname="ESL_0",
         hltv_url="https://www.hltv.org/matches/2343670/big-vs-godsent-esl-pro-league-season-12-europe",
         vod_url="https://www.twitch.tv/videos/742919310",
         vod_framerate=60,
@@ -31,10 +56,12 @@ ENCOUNTERS = (
         vod_slice_start=_t("00:55:00.000"),
         vod_slice_end=_t("05:00:00.000"),
         vod_file_start_offset=_t("00:00:01.711"),
+        total_games=3,
+        kept_game_indices=(0, 1, 2),
     ),
     dict(
         ename="2343922_gambit-youngsters-vs-sprout-nine-to-five-4",
-        caster_type="9to5_0",
+        oname="9to5_0",
         hltv_url="https://www.hltv.org/matches/2343922/gambit-youngsters-vs-sprout-nine-to-five-4",
         vod_url="https://www.twitch.tv/videos/741603761",
         vod_framerate=50,
@@ -42,7 +69,58 @@ ENCOUNTERS = (
         vod_slice_start=_t("00:25:00.000"),
         vod_slice_end=_t("04:10:00.000"),
         vod_file_start_offset=_t("00:00:03.088"),
+        total_games=3,
+        kept_game_indices=(0, 1, 2),
     ),
+
+    # Second batch******************************************************************************* **
+    dict(
+        ename="2343666_vitality-vs-fnatic-esl-pro-league-season-12-europe",
+        oname="ESL_0",
+        hltv_url="https://www.hltv.org/matches/2343666/vitality-vs-fnatic-esl-pro-league-season-12-europe",
+        vod_url="https://www.twitch.tv/videos/741690460",
+        vod_framerate=60,
+        vod_height=1080,
+        vod_slice_start=_t("04:15:00.000"),
+        vod_slice_end=_t("06:35:00.000"),
+        vod_file_start_offset=_t("00:00:01.340"),
+        total_games=2,
+        kept_game_indices=(0, 1),
+    ),
+
+    dict(
+        ename="2343663_natus-vincere-vs-og-esl-pro-league-season-12-europe",
+        oname="ESL_0",
+        hltv_url="https://www.hltv.org/matches/2343663/natus-vincere-vs-og-esl-pro-league-season-12-europe",
+        vod_url="https://www.twitch.tv/videos/739846263",
+        vod_framerate=60,
+        vod_height=1080,
+        vod_slice_start=_t("04:45:00.000"),
+        vod_slice_end=_t("06:55:00.000"),
+        vod_file_start_offset=_t("00:00:00.033"),
+        total_games=3,
+        kept_game_indices=(0, 1),
+    ),
+
+    # dict(
+    #     ename="",
+    #     oname="",
+    #     hltv_url="",
+    #     vod_url="",
+    #     # vod_framerate=,
+    #     # vod_height=,
+    #     # vod_slice_start=_t("::00.000"),
+    #     # vod_slice_end=_t("::00.000"),
+    #     # vod_file_start_offset=_t("00:00:0"),
+    # ),
+    # dict(
+    #     **ENCOUNTERS[""],
+    #     mname="",
+    #     idx_in_encounter=,
+    #     minimap_count=,
+    #     round_count=,
+    #     # vod_anchors=(),
+    # ),
 )
 ENCOUNTERS = _toser({
     d["ename"]: d
@@ -50,6 +128,7 @@ ENCOUNTERS = _toser({
 })
 
 GAMES=(
+    # First batch ******************************************************************************* **
     dict(
         **ENCOUNTERS["2343670_big-vs-godsent-esl-pro-league-season-12-europe"],
         mname="vertigo",
@@ -105,10 +184,10 @@ GAMES=(
         vod_anchors=(
             ("clap", "round_first_displacement", 1 + 0, _t("03:20:13.896")),
             ("clap", "round_first_displacement", 11 + 2, _t("03:43:58.936")),
+            # ("clap", "round_first_displacement", 15 + 6, _t("03:59:33.002")),
             ("clap", "round_first_displacement", 15 + 7, _t("04:01:39.178")),
         ),
     ),
-
     dict(
         **ENCOUNTERS["2343922_gambit-youngsters-vs-sprout-nine-to-five-4"],
         mname="train",
@@ -158,7 +237,59 @@ GAMES=(
             ("clap", "round_first_displacement", 8 + 15, _t("03:42:59.948")),
         ),
     ),
+
+    # Second batch ****************************************************************************** **
+    dict(
+        **ENCOUNTERS["2343666_vitality-vs-fnatic-esl-pro-league-season-12-europe"],
+        mname="inferno",
+        idx_in_encounter=0,
+        minimap_count=1,
+        round_count=29,
+        vod_anchors=(
+            ("clap", "round_first_displacement", 0 + 0, _t("00:04:46.925")),
+            ("clap", "round_first_displacement", 8 + 4, _t("00:30:12.333")),
+            ("clap", "round_first_displacement", 15 + 13, _t("01:09:18.460")),
+        ),
+    ),
+    dict(
+        **ENCOUNTERS["2343666_vitality-vs-fnatic-esl-pro-league-season-12-europe"],
+        mname="dust2",
+        idx_in_encounter=1,
+        minimap_count=1,
+        round_count=24,
+        vod_anchors=(
+            ("clap", "round_first_displacement", 0 + 1, _t("01:27:39.810")),
+            ("clap", "round_first_displacement", 6 + 5, _t("01:48:05.801")),
+            ("clap", "round_first_displacement", 8 + 15, _t("02:13:34.912")),
+        ),
+    ),
+    dict(
+        **ENCOUNTERS["2343663_natus-vincere-vs-og-esl-pro-league-season-12-europe"],
+        mname="train",
+        idx_in_encounter=0,
+        minimap_count=1,
+        round_count=26,
+        vod_anchors=(
+            ("clap", "round_first_displacement", 0 + 0, _t("00:02:49.953")),
+            ("clap", "round_first_displacement", 7 + 4, _t("00:21:17.409")),
+            ("clap", "round_first_displacement", 15 + 10, _t("00:51:16.590")),
+        ),
+    ),
+    dict(
+        **ENCOUNTERS["2343663_natus-vincere-vs-og-esl-pro-league-season-12-europe"],
+        mname="overpass",
+        idx_in_encounter=1,
+        minimap_count=1,
+        round_count=24,
+        vod_anchors=(
+            ("clap", "round_first_displacement", 1 + 0, _t("01:12:39.439")),
+            ("clap", "round_first_displacement", 4 + 6, _t("01:32:52.350")),
+            ("clap", "round_first_displacement", 13 + 8, _t("02:00:36.262")),
+        ),
+    ),
+
 )
+
 GAMES = _toser({
     (d["ename"], d["idx_in_encounter"]): d
     for d in GAMES
@@ -191,4 +322,12 @@ _test()
 DB_PREFIX = {
     "/": "/mnt/y/d/csgo",
     "\\": "Y:\\d\\csgo",
+}
+MINIMAP_OCCLUSIONS_PREFIX = {
+    "/": "/mnt/y/r/gogonet/mm_occlusions",
+    "\\": "Y:\\r\\gogonet\\mm_occlusions",
+}
+EVENT_PLOTS_PREFIX = {
+    "/": "/mnt/y/r/gogonet/events_plot",
+    "\\": "Y:\\r\\gogonet\\events_plot",
 }
