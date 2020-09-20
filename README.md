@@ -1,47 +1,59 @@
 # Go, Go, Go!!! Network
 
 TODO: Sum of the goals of the network
+- Network has to find minimap
+
 
 ## Player World XYZ Coordinates Regression
-#### Step 1 - Find source files
-My base data are pairs of `dem` files and their associated `vod`. The `vod` file is a regular video, the `dem` file is a counter strike `Demo File` that contains all in-game events of a game. Such pairs can be found on `hltv.org`.
+### Step 1 - Find source files
+My base data are `dem` files and their associated `vod`. A `vod` file is a regular video, a `dem` file is a counter-strike `Demo File` that contains all in-game events of a game. Such pairs can be found at `hltv.org`.
 
-Each broadcaster (e.g. ESL, 9to5) has its own UI layout (a.k.a. overlay) so I retrieved one game per broadcaster on each map usually played.
+Each broadcaster (e.g. ESL, 9to5) has its own UI layout (a.k.a. overlay) so I retrieved one game per map for several broadcasters.
 
 One broadcaster will be kept aside for testing - the goal being to generalize to unknown UI layouts. One map of each broadcaster will also be kept for testing (e.g. dust2 for ESL, inferno for 9to5). The network will not be able to generalise to unknown maps.
 
 I downloaded the `twitch` videos using `Twitch Leecher`.
 
-#### Step 2 - Convert `dem` to `json`
-Using `node` and the `DemoFile` library I've extracted just what I needed from the `dem` files, i.e. player coordinates, player aliveness, and some events. See [json_of_dem.js](json_of_dem.js).
+---
 
-To assert the validity of the extracted player coordinates I plotted those with matplotlib in 3d. See [plot_json.py](plot_json.py).
+### Step 2 - Convert `dem` to `json`
+Using `node` and the `DemoFile` library I've extracted just what I needed from the `dem` files, i.e. players live coordinates, players aliveness, and some events. See [json_of_dem.js](json_of_dem.js).
 
-inferno:
-![inferno_3d.png](inferno_3d.png)
+To assert the validity of the extracted player coordinates I plotted those with matplotlib in 3d. See [show_json.py](show_json.py).
 
-#### Step 3 - Time Co-Registration
+> inferno
+![inferno_3d.png](images/inferno_3d.png)
+
+---
+
+### Step 3 - Time Co-Registration
 Aligning the time of a `vod` file with its `dem` counterpart is not a straighforward task for several reasons:
-- Most events are hard to precisely locate on the `vod` because the overlay is most of the time out of sync from the action on screen.
+- Most events are hard to precisely locate on the `vod`.
+- The overlay is most of the time out of sync from the action on screen.
 - The `vod` often looses the focus to show things like kill cams or people's faces.
-- Small differences of flow rate between the two. e.g. a match being 4800sec long on the `vod` and 4803sec long on the `dem`.
-- Commercial breaks between rounds not reflected in the `dem` file.
-- Technical problems on the `vod`
+- There are small differences of flow rate between the `vod` and the `dem`. e.g. a match being 4800s long on the `vod` and 4803s long on the `dem`.
+- Breaks between rounds not reflected in the `dem` file.
+- Technical problems on the `vod`.
 - The `dem` files can start too late (or stop too soon) and miss the beginning (or the end) of a game.
 
 I found `end of buy phase`, `bomb planted`, `bomb exploded` and `bomb defused` to be the easiest events to tag on a `vod`. Things like `begining of buy phase` or `player death` don't have clear visual clues.
 
-For each `game` I tracked down the `vod` timestamp of >=3 events per game (using `Avidemux`) that serve as `claps` to allow for the linear interpolation (and extrapolation) any timestamp of the `game`. More timestamps are necessary to handle the commercial breaks. See [constants.py](constants.py).
+For each `game` I tracked down the `vod` timestamp of ≥3 events per game (using `Avidemux`) that serve as `claps` to allow for the linear interpolation (and extrapolation) of any timestamp of the `game`.
+More timestamps are necessary to handle the breaks. See [constants.py](constants.py).
 
-##### [plot_time_coregistration.py](plot_time_coregistration.py)
-Using this script I can check the validity of the co-registration on the events that I havent manually tagged.
+##### Script: [plot_time_coregistration.py](plot_time_coregistration.py)
+Using this script I can check the validity of the co-registration on the events that I haven't manually tagged.
 
-##### [test_time_coregistration.py](test_time_coregistration.py)
-Using this script I can check the quality of the co-registration by comparing a `clap` manually tagged against its estimation from the other `claps` in the game. This process allows the detection of missing breaks, and helps deciding if there are enough `claps` in the game.
+> On top, a `vod` at an event `bomb_exploded` that wasn't manually labelled but that was calculated from the `claps`. Below the same `vod` 150ms later.
+![bomb_exploded](images/bomb_exploded.png)
 
-For exemple, on `2343922_gambit-youngsters-vs-sprout-nine-to-five-4` / `vertigo` I had to add one `clap` to keep the drift below 100ms.
+##### Script: [test_time_coregistration.py](test_time_coregistration.py)
+Using this script I can check the quality of the co-registration by comparing a `clap` manually tagged against its estimation from the other `claps` in the game.
+This process allows for the detection of missing breaks, and helps deciding if there are enough `claps` in the game.
 
-before
+For exemple, on `2343922_gambit-youngsters-vs-sprout-nine-to-five-4`/`vertigo` I had to add one `clap` to keep the drift below 100ms:
+
+- Before:
 ```
    idx                        ev  round_idx         tdem      tvod    tvod_pred   error
 0    0  round_first_displacement          2   228.562500  6584.768  6584.725820  -0.042
@@ -50,7 +62,7 @@ before
 3    3  round_first_displacement         28  3540.171875  9897.768  9897.661607  -0.106
 ```
 
-after
+- After:
 ```
    idx                        ev  round_idx         tdem      tvod    tvod_pred   error
 0    0  round_first_displacement          2   228.562500  6584.768  6584.725820  -0.042
@@ -60,9 +72,28 @@ after
 4    4  round_first_displacement         28  3540.171875  9897.768  9897.780189  +0.012
 ```
 
-#### Step 4 - Minimap Co-Registration
+---
 
+### Step 4 - Minimap Co-Registration
 TODO: Aligning minimap and aligning the dots serve 2 different purposes
+TODO: Need to check the minimap visibility in all rounds
+TODO: Need to align
+
+###### Step 4.a - Keep only the rounds where the minimap isn't occluded
+To simplify that process I wrote [plot_minimap_occlusions.py](plot_minimap_occlusions.py).
+This script looks for the largest pixel differences between two consecutive frames on the rectangle where the map is supposed to be on the `vod`.
+For each round it produces an image such as those:
+
+> On `vitality-vs-fnatic-esl-pro-league-season-12-europe` on `inferno` the minimap stays visible all for all the round 19.
+![minimap_visible](images/minimap_visible.png)
+
+> On `natus-vincere-vs-og-esl-pro-league-season-12-europe_1` on `overpass` the minimap disappears toward the end of round 18.
+![minimap_hidden](images/minimap_hidden.png)
+
+###### Step 4.b - Manually register the world's x/y coordinates with the minimap
+
+
+##### WIP
 
 A brave data-scientist would directly regress the player's coordinates and not need more data. I instead chose to be safe by manually registering the `dem` x/y coordinates with the `vod` i/j coordinates in order to also train the network to locate the minimap icons.
 
@@ -74,4 +105,4 @@ The stylish `vods` that use 2 minimaps to represent the different floors on `ver
 
 ---
 
-![go go go](gogogo.jpg)
+![Go, Go, Go!!! Network](images/gogogo.jpg)
