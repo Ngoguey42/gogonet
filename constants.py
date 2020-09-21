@@ -4,15 +4,11 @@ import pandas as pd
 
 def _toser(o):
     if isinstance(o, (list, tuple)):
-        return tuple([
-            _toser(v)
-            for v in o
-        ])
+        return tuple([_toser(v) for v in o])
+    if isinstance(o, (set, frozenset)):
+        return frozenset(_toser(v) for v in o)
     elif isinstance(o, dict):
-        return pd.Series({
-            k: _toser(v)
-            for k, v in o.items()
-        })
+        return pd.Series({k: _toser(v) for k, v in o.items()})
     else:
         return o
 
@@ -159,6 +155,7 @@ GAMES=(
             ("clap", "round_first_displacement", 15 + 16, _t("01:08:22.359")),
             ("clap", "round_first_displacement", 15 + 18, _t("01:12:36.045")),
         ),
+        partial_minimap_rounds={0, 13, 16, 29, 33},
     ),
     dict(
         **ENCOUNTERS["2343670_big-vs-godsent-esl-pro-league-season-12-europe"],
@@ -174,6 +171,7 @@ GAMES=(
             ("clap", "round_first_displacement", 20, _t("02:16:37.166")),
             ("clap", "round_first_displacement", 40, _t("02:58:59.556")),
         ),
+        partial_minimap_rounds={0, 8, 13, 14, 15, 19, 20, 23, 25, 27, 29, 30, 31, 33, 35, 38, 40},
     ),
     dict(
         **ENCOUNTERS["2343670_big-vs-godsent-esl-pro-league-season-12-europe"],
@@ -187,6 +185,7 @@ GAMES=(
             # ("clap", "round_first_displacement", 15 + 6, _t("03:59:33.002")),
             ("clap", "round_first_displacement", 15 + 7, _t("04:01:39.178")),
         ),
+        partial_minimap_rounds={5, 6, 9, 11, 12, 14, 15, 18, 19, 21, 22, },
     ),
     dict(
         **ENCOUNTERS["2343922_gambit-youngsters-vs-sprout-nine-to-five-4"],
@@ -202,6 +201,7 @@ GAMES=(
             ("clap", "round_first_displacement", 21, _t("00:46:08.608")),
             ("clap", "round_first_displacement", 41, _t("01:26:41.588")),
         ),
+        partial_minimap_rounds={5, 18, 19, 23, 32, 35, },
     ),
     dict(
         **ENCOUNTERS["2343922_gambit-youngsters-vs-sprout-nine-to-five-4"],
@@ -220,6 +220,7 @@ GAMES=(
             ("clap", "round_first_displacement", 15 + 13, _t("02:44:57.768")),
             # ("clap", "round_first_displacement", 15 + 14, occluded
         ),
+        partial_minimap_rounds={1, 17, 18, 24, 29},
     ),
     dict(
         **ENCOUNTERS["2343922_gambit-youngsters-vs-sprout-nine-to-five-4"],
@@ -236,6 +237,7 @@ GAMES=(
             ("clap", "round_first_displacement", 6 + 11, _t("03:31:17.688")),
             ("clap", "round_first_displacement", 8 + 15, _t("03:42:59.948")),
         ),
+        partial_minimap_rounds={1, 9, 12},
     ),
 
     # Second batch ****************************************************************************** **
@@ -250,6 +252,7 @@ GAMES=(
             ("clap", "round_first_displacement", 8 + 4, _t("00:30:12.333")),
             ("clap", "round_first_displacement", 15 + 13, _t("01:09:18.460")),
         ),
+        partial_minimap_rounds={7, 8, 10, 14, 17, 23, 28},
     ),
     dict(
         **ENCOUNTERS["2343666_vitality-vs-fnatic-esl-pro-league-season-12-europe"],
@@ -262,6 +265,7 @@ GAMES=(
             ("clap", "round_first_displacement", 6 + 5, _t("01:48:05.801")),
             ("clap", "round_first_displacement", 8 + 15, _t("02:13:34.912")),
         ),
+        partial_minimap_rounds={0, 1, 2, 7, 8, 9, 10, 11, 14, 18, 19, 20, 22, 23},
     ),
     dict(
         **ENCOUNTERS["2343663_natus-vincere-vs-og-esl-pro-league-season-12-europe"],
@@ -274,6 +278,7 @@ GAMES=(
             ("clap", "round_first_displacement", 7 + 4, _t("00:21:17.409")),
             ("clap", "round_first_displacement", 15 + 10, _t("00:51:16.590")),
         ),
+        partial_minimap_rounds={4, 12, 13, 14, 25},
     ),
     dict(
         **ENCOUNTERS["2343663_natus-vincere-vs-og-esl-pro-league-season-12-europe"],
@@ -286,6 +291,7 @@ GAMES=(
             ("clap", "round_first_displacement", 4 + 6, _t("01:32:52.350")),
             ("clap", "round_first_displacement", 13 + 8, _t("02:00:36.262")),
         ),
+        partial_minimap_rounds={4, 10, 12, 14, 18, 20, 21, 22, 23},
     ),
 
 )
