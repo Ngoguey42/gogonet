@@ -4,6 +4,7 @@ import os
 
 import numpy as np
 import pandas as pd
+import intervaltree
 
 import constants as con
 
@@ -71,6 +72,47 @@ def segment_rounds(evs):
 
     return rounds
 
+def create_tdem_classifier(dfevs):
+    tree = intervaltree.IntervalTree()
+
+    round_idxs = set(list(dfevs.round_idx.values))
+    dfevs = dfevs.set_index(["round_idx", "ev"])
+    for round_idx in round_idxs:
+        a = dfevs.loc[(round_idx, "round_start")].iloc[0]
+        b = dfevs.loc[(round_idx, "round_freeze_end")].iloc[0]
+        c = dfevs.loc[(round_idx, "round_end")].iloc[0]
+        c = np.nextafter(c, -np.inf) # Avoid overlaps
+        tree[a:b] = ("frozen", round_idx)
+        tree[b:c] = ("playing", round_idx)
+
+    def classify(t):
+        matches = tree.at(t)
+        assert len(matches) <= 1
+        if len(matches) == 1:
+            return list(matches)[0].data
+        else:
+            return "out", None
+    return classify
+
+def classify_tdem(dfevs, t):
+    if t < dfevs.t.iloc[0]:
+        return "out", None
+    for i, u in dfevs.t.items():
+        if u >= t:
+            break
+    else:
+        return "out", None
+    round_idx = dfevs.round_idx.loc[i]
+    df = dfevs.query(f"round_idx == {round_idx}").set_index("ev")
+    if t < df.t.loc["round_start"]:
+        return "out", None
+    elif t < df.t.loc["round_freeze_end"]:
+        return "frozen", round_idx
+    elif t < df.t.loc["round_end"]:
+        return "playing", round_idx
+    else:
+        return "out", None
+
 def path_of_json(ename, egidx):
     prefix = con.DB_PREFIX[os.path.sep]
     mname = con.GAMES[(ename, egidx)].mname
@@ -109,6 +151,7 @@ def load_json(ename, egidx):
                 x=x, y=y, z=z, t=ev["t"], pid=pid,
             ))
     dfticks = pd.DataFrame(rows).set_index(["t", "pid"], verify_integrity=True)
+    dfticks = dfticks.reset_index()
     # print(dfticks)
 
     rows = []
