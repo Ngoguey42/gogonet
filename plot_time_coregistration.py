@@ -27,7 +27,8 @@ def process(ginfo):
     ):
         ev, t, round_idx = ser.ev, ser.t, ser.round_idx
         outpath = os.path.join(
-            con.EVENT_PLOTS_PREFIX[os.path.sep],
+            con.DB_PREFIX[os.path.sep],
+            "events_plot",
             f"{ename}_{egidx}_{ginfo.mname}_{i:02d}_{ev}_{round_idx}.png",
         )
         if os.path.isfile(outpath):

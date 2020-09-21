@@ -16,15 +16,19 @@ for ginfo in con.GAMES.values:
         if round_idx not in ginfo.partial_minimap_rounds:
             continue
         outpath = os.path.join(
-            con.MINIMAP_OCCLUSIONS_PREFIX[os.path.sep],
+            con.DB_PREFIX[os.path.sep],
+            "mm_occlusions",
             f"{ename}_{egidx}_{ginfo.mname}_round{round_idx:02d}.png",
         )
         print(outpath)
         assert os.path.isfile(outpath)
         l.append(outpath)
-pref = os.path.join(con.MINIMAP_OCCLUSIONS_PREFIX[os.path.sep], "occ")
+pref = os.path.join(
+    con.DB_PREFIX[os.path.sep],
+    "mm_occlusions",
+    "occ",
+)
 os.makedirs(pref, exist_ok=True)
 for p in l:
     shutil.move(p, pref)
 #
-

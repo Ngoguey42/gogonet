@@ -21,18 +21,19 @@ def process(ginfo):
     ename = ginfo.ename
     dfticks, dfevs = tools.load_json(ename, egidx)
     ginfo = con.GAMES[(ename, egidx)]
-    fps = ginfo.vod_framerate
     oinfo = con.OVERLAYS[ginfo.oname]
     to_vod, to_dem = tools.create_timestamp_conversions(dfevs, ginfo.vod_anchors)
 
     path = tools.path_of_vod(ename, egidx)
     print("> opening", path)
     vidcap = cv2.VideoCapture(path)
+    fps = vidcap.get(cv2.CAP_PROP_FPS) # Use the one from `cv2`, not the official one
 
     dfevs = dfevs.reset_index().set_index(["ev", "round_idx"], verify_integrity=True)
     for round_idx in sorted(set(dfevs.reset_index().round_idx)):
         outpath = os.path.join(
-            con.MINIMAP_OCCLUSIONS_PREFIX[os.path.sep],
+            con.DB_PREFIX[os.path.sep],
+            "mm_occlusions",
             f"{ename}_{egidx}_{ginfo.mname}_round{round_idx:02d}.png",
         )
         if os.path.isfile(outpath):
@@ -42,7 +43,6 @@ def process(ginfo):
         tdem1 = dfevs.loc[("round_end", round_idx), "t"]
         assert isinstance(tdem0, float), tdem0
         assert isinstance(tdem1, float), tdem1
-        # tdem1 = tdem0 + 4 + 1 / 128
         print(f"  > round {round_idx}"
               f", tdem {tools.time_totxt((tdem0))} -> {tools.time_totxt((tdem1))} "
               f", tvod {tools.time_totxt(to_vod(tdem0))} -> {tools.time_totxt(to_vod(tdem1))}"
@@ -64,8 +64,8 @@ def process(ginfo):
         assert fcount * mmh * mmw * 3 < 1000 ** 3, "About to allocate a tensor >1GB"
         mms = np.empty((fcount, mmh, mmw, 3), "uint8")
         print("  > preallocated minimaps tensor:", mms.dtype, mms.shape, mms.size / 1000 ** 2, "MB")
-
         for i, f in tqdm(enumerate(range(f0, f0 + fcount)), total=fcount, disable=True):
+            assert vidcap.get(cv2.CAP_PROP_POS_FRAMES) == f0 + i
             success, img = vidcap.read()
             assert success
             img = img[:, :, ::-1]

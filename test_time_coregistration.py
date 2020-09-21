@@ -9,9 +9,6 @@ import cv2
 import constants as con
 import tools
 
-ename, egidx = sys.argv[1:]
-egidx = int(egidx)
-
 for (ename, egidx), ginfo in con.GAMES.items():
     if "vod_anchors" not in ginfo.index:
         continue

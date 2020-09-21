@@ -155,7 +155,8 @@ GAMES=(
             ("clap", "round_first_displacement", 15 + 16, _t("01:08:22.359")),
             ("clap", "round_first_displacement", 15 + 18, _t("01:12:36.045")),
         ),
-        partial_minimap_rounds={0, 13, 16, 29, 33},
+        # partial_minimap_rounds={0, 13, 16, 29, 33},
+        partial_minimap_rounds={0, 13, 14, 16, 22, 30, 32},
     ),
     dict(
         **ENCOUNTERS["2343670_big-vs-godsent-esl-pro-league-season-12-europe"],
@@ -171,7 +172,8 @@ GAMES=(
             ("clap", "round_first_displacement", 20, _t("02:16:37.166")),
             ("clap", "round_first_displacement", 40, _t("02:58:59.556")),
         ),
-        partial_minimap_rounds={0, 8, 13, 14, 15, 19, 20, 23, 25, 27, 29, 30, 31, 33, 35, 38, 40},
+        # partial_minimap_rounds={0, 8, 13, 14, 15, 19, 20, 23, 25, 27, 29, 30, 31, 33, 35, 38, 40},
+        partial_minimap_rounds={0, 1, 10, 11, 13, 15, 16, 18, 22, 25, 27, 30, 33, 38},
     ),
     dict(
         **ENCOUNTERS["2343670_big-vs-godsent-esl-pro-league-season-12-europe"],
@@ -185,7 +187,11 @@ GAMES=(
             # ("clap", "round_first_displacement", 15 + 6, _t("03:59:33.002")),
             ("clap", "round_first_displacement", 15 + 7, _t("04:01:39.178")),
         ),
-        partial_minimap_rounds={5, 6, 9, 11, 12, 14, 15, 18, 19, 21, 22, },
+        # partial_minimap_rounds={
+        #     5, 6, 9, 11, 12, 14, 15, 18, 19, 21, 22,
+        #     0, # On round 0a player has an `undefined` minimap text
+        # },
+        partial_minimap_rounds={0, 6, 7, 11, 16, 18, 19, },
     ),
     dict(
         **ENCOUNTERS["2343922_gambit-youngsters-vs-sprout-nine-to-five-4"],
@@ -238,6 +244,7 @@ GAMES=(
             ("clap", "round_first_displacement", 8 + 15, _t("03:42:59.948")),
         ),
         partial_minimap_rounds={1, 9, 12},
+        # partial_minimap_rounds={},
     ),
 
     # Second batch ****************************************************************************** **
@@ -252,7 +259,8 @@ GAMES=(
             ("clap", "round_first_displacement", 8 + 4, _t("00:30:12.333")),
             ("clap", "round_first_displacement", 15 + 13, _t("01:09:18.460")),
         ),
-        partial_minimap_rounds={7, 8, 10, 14, 17, 23, 28},
+        # partial_minimap_rounds={7, 8, 10, 14, 17, 23, 28},
+        partial_minimap_rounds={5, 7, 8, 10, 14, 15, 17, 22, 23, 25},
     ),
     dict(
         **ENCOUNTERS["2343666_vitality-vs-fnatic-esl-pro-league-season-12-europe"],
@@ -265,7 +273,8 @@ GAMES=(
             ("clap", "round_first_displacement", 6 + 5, _t("01:48:05.801")),
             ("clap", "round_first_displacement", 8 + 15, _t("02:13:34.912")),
         ),
-        partial_minimap_rounds={0, 1, 2, 7, 8, 9, 10, 11, 14, 18, 19, 20, 22, 23},
+        # partial_minimap_rounds={0, 1, 2, 7, 8, 9, 10, 11, 14, 18, 19, 20, 22, 23},
+        partial_minimap_rounds={0, 2, 4, 6, 7, 12, 13, 17, 19, 22},
     ),
     dict(
         **ENCOUNTERS["2343663_natus-vincere-vs-og-esl-pro-league-season-12-europe"],
@@ -278,7 +287,8 @@ GAMES=(
             ("clap", "round_first_displacement", 7 + 4, _t("00:21:17.409")),
             ("clap", "round_first_displacement", 15 + 10, _t("00:51:16.590")),
         ),
-        partial_minimap_rounds={4, 12, 13, 14, 25},
+        # partial_minimap_rounds={4, 12, 13, 14, 25},
+        partial_minimap_rounds={2, 4, 6, 8, 12, 13, 14, 15, 20, 23, 24},
     ),
     dict(
         **ENCOUNTERS["2343663_natus-vincere-vs-og-esl-pro-league-season-12-europe"],
@@ -291,7 +301,8 @@ GAMES=(
             ("clap", "round_first_displacement", 4 + 6, _t("01:32:52.350")),
             ("clap", "round_first_displacement", 13 + 8, _t("02:00:36.262")),
         ),
-        partial_minimap_rounds={4, 10, 12, 14, 18, 20, 21, 22, 23},
+        # partial_minimap_rounds={4, 10, 12, 14, 18, 20, 21, 22, 23},
+        partial_minimap_rounds={0, 4, 5, 9, 11, 12, 14, 19, 20, 21, 23},
     ),
 
 )
@@ -328,12 +339,4 @@ _test()
 DB_PREFIX = {
     "/": "/mnt/y/d/csgo",
     "\\": "Y:\\d\\csgo",
-}
-MINIMAP_OCCLUSIONS_PREFIX = {
-    "/": "/mnt/y/r/gogonet/mm_occlusions",
-    "\\": "Y:\\r\\gogonet\\mm_occlusions",
-}
-EVENT_PLOTS_PREFIX = {
-    "/": "/mnt/y/r/gogonet/events_plot",
-    "\\": "Y:\\r\\gogonet\\events_plot",
 }
