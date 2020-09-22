@@ -1,3 +1,5 @@
+"""Explained in README"""
+
 import json
 import sys
 from pprint import pprint
@@ -37,9 +39,10 @@ for (ename, egidx), ginfo in con.GAMES.items():
     for left_out_clap in claps:
         anchors = list(ginfo.vod_anchors)
         anchors.pop(left_out_clap.idx)
-        to_vod, _ = tools.create_timestamp_conversions(evdf, anchors)
-        left_out_clap["tvod_pred"] = to_vod(left_out_clap.tdem)
+        to_tvod, _ = tools.create_timestamp_conversions(evdf, anchors)
+        left_out_clap["tvod_pred"] = to_tvod(left_out_clap.tdem)
 
+    # Format output ***************************************************************************** **
     df = pd.DataFrame(claps)
     df["error"] = df.tvod_pred - df.tvod
     df["error"] = df.error.apply(

@@ -1,3 +1,5 @@
+/* A very dirty file to extract what I need from the `dem` files */
+
 const fs = require("fs");
 const demofile = require("demofile");
 const util = require('util');

@@ -1,7 +1,10 @@
+"""Tiny script to move away the png from the rounds with a hidden minimap"""
 import os
 import tools
-import constants as con
 import shutil
+
+import constants as con
+
 l = []
 for ginfo in con.GAMES.values:
     egidx = ginfo.idx_in_encounter
@@ -10,7 +13,7 @@ for ginfo in con.GAMES.values:
     ginfo = con.GAMES[(ename, egidx)]
     fps = ginfo.vod_framerate
     oinfo = con.OVERLAYS[ginfo.oname]
-    to_vod, to_dem = tools.create_timestamp_conversions(evdf, ginfo.vod_anchors)
+    to_tvod, to_tdem = tools.create_timestamp_conversions(evdf, ginfo.vod_anchors)
     evdf = evdf.reset_index().set_index(["ev", "round_idx"], verify_integrity=True)
     for round_idx in sorted(set(evdf.reset_index().round_idx)):
         if round_idx not in ginfo.partial_minimap_rounds:

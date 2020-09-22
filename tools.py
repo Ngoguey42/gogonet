@@ -1,3 +1,5 @@
+"""Utility functions repeteadly used."""
+
 import json
 from pprint import pprint
 import os
@@ -9,11 +11,12 @@ import intervaltree
 import constants as con
 
 def segment_rounds(evs):
-    # State machine to identify full rounds with a sound chain of events
-    # A round have at least: `round_start`, `round_freeze_end`, `round_end` and `round_officially_ended`
-    # bomb events might occur after `round_officially_ended`
-    # Some rounds might be squeezed because of missing `round_start` etc..
-    # Some events might be simultaneous (like bomb event and end of round)
+    """State machine to extract the rounds with a sound chain of events.
+    A round have at least: `round_start`, `round_freeze_end`, `round_end` and `round_officially_ended`.
+    Bomb events might occur after `round_officially_ended`.
+    Some rounds might be squeezed because of missing `round_start` etc..
+    Some events might be simultaneous (like bomb event and end of round).
+    """
     rounds = []
     latest_timings = {}
     latest_unfreeze_ridx = None # Only trust round idx at unfreeze
@@ -26,7 +29,6 @@ def segment_rounds(evs):
     def flush(tail=False):
         nonlocal latest_timings, latest_unfreeze_ridx
         t = latest_timings
-        # print("Flush!", latest_unfreeze_ridx, t)
         if (t.get("round_start") is not None and
             t.get("round_freeze_end") is not None and
             t.get("round_end") is not None and
@@ -72,47 +74,6 @@ def segment_rounds(evs):
 
     return rounds
 
-def create_tdem_classifier(evdf):
-    tree = intervaltree.IntervalTree()
-
-    round_idxs = set(list(evdf.round_idx.values))
-    evdf = evdf.set_index(["round_idx", "ev"])
-    for round_idx in round_idxs:
-        a = evdf.loc[(round_idx, "round_start")].iloc[0]
-        b = evdf.loc[(round_idx, "round_freeze_end")].iloc[0]
-        c = evdf.loc[(round_idx, "round_end")].iloc[0]
-        c = np.nextafter(c, -np.inf) # Avoid overlaps
-        tree[a:b] = ("frozen", round_idx)
-        tree[b:c] = ("playing", round_idx)
-
-    def classify(t):
-        matches = tree.at(t)
-        assert len(matches) <= 1
-        if len(matches) == 1:
-            return list(matches)[0].data
-        else:
-            return "out", None
-    return classify
-
-def classify_tdem(evdf, t):
-    if t < evdf.t.iloc[0]:
-        return "out", None
-    for i, u in evdf.t.items():
-        if u >= t:
-            break
-    else:
-        return "out", None
-    round_idx = evdf.round_idx.loc[i]
-    df = evdf.query(f"round_idx == {round_idx}").set_index("ev")
-    if t < df.t.loc["round_start"]:
-        return "out", None
-    elif t < df.t.loc["round_freeze_end"]:
-        return "frozen", round_idx
-    elif t < df.t.loc["round_end"]:
-        return "playing", round_idx
-    else:
-        return "out", None
-
 def path_of_vod(ename, egidx):
     prefix = con.DB_PREFIX[os.path.sep]
     mname = con.GAMES[(ename, egidx)].mname
@@ -127,7 +88,6 @@ def time_totxt(v):
     return f"{sign}{h:02.0f}:{m:02.0f}:{s:06.3f}"
 
 def load_codf(ename, egidx):
-    # codf - coordinates data frame
     prefix = con.DB_PREFIX[os.path.sep]
     mname = con.GAMES[(ename, egidx)].mname
     path = os.path.join(prefix, f"{ename}_{egidx}_{mname}_coords.json")
@@ -148,7 +108,6 @@ def load_codf(ename, egidx):
     return codf
 
 def load_evdf(ename, egidx):
-    # evdf - events data frame
     prefix = con.DB_PREFIX[os.path.sep]
     mname = con.GAMES[(ename, egidx)].mname
     path = os.path.join(prefix, f"{ename}_{egidx}_{mname}_events.json")
@@ -167,7 +126,6 @@ def load_evdf(ename, egidx):
     return evdf
 
 def load_compodf(ename, egidx):
-    # compodf - compoents data frame
     prefix = con.DB_PREFIX[os.path.sep]
     mname = con.GAMES[(ename, egidx)].mname
     path = os.path.join(prefix, f"{ename}_{egidx}_{mname}_compo.json")
@@ -203,7 +161,7 @@ def load_iconsdf(ename, egidx):
             y=y,
         )
         for ft in j["features"]
-        # [1, -1] to correct the y flip from qgis
+        # [1, -1] to correct the y flip from QGis
         # -0.5 to correct the fact that qgis treats pixels as points (and not areas)
         for (x, y) in [np.asarray(ft["geometry"]["coordinates"][0]).mean(axis=0) * [1, -1] - 0.5]
     ])
@@ -215,13 +173,40 @@ def load_iconsdf(ename, egidx):
     assert (iconsdf.label <= 10).all()
     return iconsdf
 
+def create_tdem_classifier(evdf):
+    tree = intervaltree.IntervalTree()
+
+    round_idxs = set(list(evdf.round_idx.values))
+    evdf = evdf.set_index(["round_idx", "ev"])
+    for round_idx in round_idxs:
+        a = evdf.loc[(round_idx, "round_start")].iloc[0]
+        b = evdf.loc[(round_idx, "round_freeze_end")].iloc[0]
+        c = evdf.loc[(round_idx, "round_end")].iloc[0]
+        c = np.nextafter(c, -np.inf) # Avoid overlaps
+        tree[a:b] = ("frozen", round_idx)
+        tree[b:c] = ("playing", round_idx)
+
+    def classify(t):
+        matches = tree.at(t)
+        assert len(matches) <= 1
+        if len(matches) == 1:
+            return list(matches)[0].data
+        else:
+            return "out", None
+    return classify
+
+def classify_tdem(evdf, t):
+    return create_tdem_classifier(evdf)(t)
+
 def create_timestamp_conversions(evdf, anchors):
+    """Created from the `vod_anchor` fields from constants.py"""
     df = evdf.reset_index().set_index(["ev", "round_idx"])
 
     def get_tdem(ev, round_idx):
         """Find the event in df"""
         if ev == "round_first_displacement":
-            ev = "round_freeze_end" # TODO: Find the time displacement between those 2 events
+            # Those are roughly equal.
+            ev = "round_freeze_end"
         return float(df.loc[(ev, round_idx), "t"])
 
     def create_lerp_on_floats(xleft, xright, yleft, yright):
@@ -242,17 +227,17 @@ def create_timestamp_conversions(evdf, anchors):
             yield l[i:i+3]
 
     anchors = [["start"]] + list(anchors) + [["end"]]
-    tdem_intervals, tvod_intervals, to_dems, to_vods = [], [], [], []
+    tdem_intervals, tvod_intervals, to_tdems, to_tvods = [], [], [], []
     for a0, a1, a2 in yield_3_by_3(anchors):
-        tag = (a0[0], a1[0], a2[0])
+        tag = (a0[0], a1[0], a2[0]) # Pattern matching
         if tag == ("start", "clap", "clap"):
             # ]-inf; a1], lerp on a1/a2
             left, right = a1, a2
-            to_dem = create_lerp_on_floats(
+            to_tdem = create_lerp_on_floats(
                 left[3], right[3],
                 get_tdem(left[1], left[2]), get_tdem(right[1], right[2]),
             )
-            to_vod = create_lerp_on_floats(
+            to_tvod = create_lerp_on_floats(
                 get_tdem(left[1], left[2]), get_tdem(right[1], right[2]),
                 left[3], right[3],
             )
@@ -263,11 +248,11 @@ def create_timestamp_conversions(evdf, anchors):
         elif tag == ("clap", "clap", "clap"):
             # [a0; a1], lerp on a0/a1
             left, right = a0, a1
-            to_dem = create_lerp_on_floats(
+            to_tdem = create_lerp_on_floats(
                 left[3], right[3],
                 get_tdem(left[1], left[2]), get_tdem(right[1], right[2]),
             )
-            to_vod = create_lerp_on_floats(
+            to_tvod = create_lerp_on_floats(
                 get_tdem(left[1], left[2]), get_tdem(right[1], right[2]),
                 left[3], right[3],
             )
@@ -278,43 +263,43 @@ def create_timestamp_conversions(evdf, anchors):
         elif tag == ("clap", "clap", "break"):
             # [a0; break], lerp on a0/a1
             left, right = a0, a1
-            to_dem = create_lerp_on_floats(
+            to_tdem = create_lerp_on_floats(
                 left[3], right[3],
                 get_tdem(left[1], left[2]), get_tdem(right[1], right[2]),
             )
-            to_vod = create_lerp_on_floats(
+            to_tvod = create_lerp_on_floats(
                 get_tdem(left[1], left[2]), get_tdem(right[1], right[2]),
                 left[3], right[3],
             )
             tdem_start = get_tdem(a0[1], a0[2])
             tdem_end = get_tdem(a2[1], a2[2])
             tvod_start = a0[3]
-            tvod_end = to_vod(tdem_end) # extrapolated from the current lerp
+            tvod_end = to_tvod(tdem_end) # extrapolated from the current lerp
         elif tag == ("clap", "break", "clap"):
             continue # covered by previous case
         elif tag == ("break", "clap", "clap"):
             # [break; a1], lerp on a1/a2
             left, right = a1, a2
-            to_dem = create_lerp_on_floats(
+            to_tdem = create_lerp_on_floats(
                 left[3], right[3],
                 get_tdem(left[1], left[2]), get_tdem(right[1], right[2]),
             )
-            to_vod = create_lerp_on_floats(
+            to_tvod = create_lerp_on_floats(
                 get_tdem(left[1], left[2]), get_tdem(right[1], right[2]),
                 left[3], right[3],
             )
             tdem_start = get_tdem(a0[1], a0[2])
             tdem_end = get_tdem(a1[1], a1[2])
-            tvod_start = to_vods[-1](tdem_start) # extrapolated from the previous lerp
+            tvod_start = to_tvods[-1](tdem_start) # extrapolated from the previous lerp
             tvod_end = a1[3]
         elif tag == ("clap", "clap", "end"):
             # [a0; +inf[, lerp on a0/a1
             left, right = a0, a1
-            to_dem = create_lerp_on_floats(
+            to_tdem = create_lerp_on_floats(
                 left[3], right[3],
                 get_tdem(left[1], left[2]), get_tdem(right[1], right[2]),
             )
-            to_vod = create_lerp_on_floats(
+            to_tvod = create_lerp_on_floats(
                 get_tdem(left[1], left[2]), get_tdem(right[1], right[2]),
                 left[3], right[3],
             )
@@ -324,34 +309,32 @@ def create_timestamp_conversions(evdf, anchors):
             tvod_end = +np.inf
         else:
             assert False, tag
-        # print("> ", tag)
+
         if tdem_start != -np.inf:
             assert tdem_intervals[-1][1] == tdem_start, (tdem_intervals[-1][1], tdem_start)
             assert tvod_intervals[-1][1] == tvod_start, (tvod_intervals[-1][1], tvod_start)
         tdem_intervals.append((tdem_start, tdem_end))
         tvod_intervals.append((tvod_start, tvod_end))
-        to_dems.append(to_dem)
-        to_vods.append(to_vod)
+        to_tdems.append(to_tdem)
+        to_tvods.append(to_tvod)
 
     assert tdem_intervals[0][0] == -np.inf
     assert tdem_intervals[-1][1] == np.inf
     assert tvod_intervals[0][0] == -np.inf
     assert tvod_intervals[-1][1] == np.inf
 
-    def to_dem(tvod):
-        """Not monotonic because of breaks, surjective
-        """
+    def to_tdem(tvod):
+        """Not monotonic because of breaks, surjective"""
         for i, (start, end) in enumerate(tvod_intervals):
             if start <= tvod <= end:
-                return to_dems[i](tvod)
+                return to_tdems[i](tvod)
         assert False, "unreachable"
 
-    def to_vod(tdem):
-        """Monotonic, injective
-        """
+    def to_tvod(tdem):
+        """Monotonic, injective"""
         for i, (start, end) in enumerate(tdem_intervals):
             if start <= tdem <= end:
-                return to_vods[i](tdem)
+                return to_tvods[i](tdem)
         assert False, "unreachable"
 
-    return to_vod, to_dem
+    return to_tvod, to_tdem

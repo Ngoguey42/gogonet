@@ -1,3 +1,9 @@
+"""A script to help in the process of computing the transformation matrix from the minimap
+space to the world space.
+
+It is pretty clean but some pieces of logic are a bit convoluted, especially with pandas.
+"""
+
 import os
 import json
 import sys
@@ -40,7 +46,7 @@ def process(ginfo):
     evdf = tools.load_evdf(ename, egidx)
     compodf = tools.load_compodf(ename, egidx)
     codf = tools.load_codf(ename, egidx)
-    to_vod, to_dem = tools.create_timestamp_conversions(evdf, ginfo.vod_anchors)
+    to_tvod, to_tdem = tools.create_timestamp_conversions(evdf, ginfo.vod_anchors)
     classify_tdem = tools.create_tdem_classifier(evdf)
 
     # Print teams composition to help feeding `players_order` in constants.py ******************* **
@@ -82,12 +88,12 @@ def process(ginfo):
         ])
         small_codf = group_per_tdem[mindist_per_tdem.argmax()]
         tdem = small_codf.t.iloc[0]
-        tvod = to_vod(tdem)
+        tvod = to_tvod(tdem)
         _, round_idx = classify_tdem(tdem)
     else:
         print("> Got an annotated frame...")
         tvod = ginfo.annotated_vod_frame
-        tdem = to_dem(tvod)
+        tdem = to_tdem(tvod)
         _, round_idx = classify_tdem(tdem)
         small_codf = codf[(codf.t >= tdem - 0.5/128) & (codf.t <= tdem + 0.5/128)]
 
@@ -107,7 +113,7 @@ def process(ginfo):
         vpath = tools.path_of_vod(ename, egidx)
         vidcap = cv2.VideoCapture(vpath)
         fps = vidcap.get(cv2.CAP_PROP_FPS) # Use the fps from `cv2`, not the official one
-        f0_float = (to_vod(tdem) - ginfo.vod_file_start_offset) * fps
+        f0_float = (to_tvod(tdem) - ginfo.vod_file_start_offset) * fps
         f0 = int(round(f0_float))
         diff_with_tvod = (f0 - f0_float) / fps
         print(f"frame: {f0} ({f0_float:.5f}, {diff_with_tvod:+.5f}sec)")

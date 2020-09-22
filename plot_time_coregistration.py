@@ -1,3 +1,5 @@
+"""Explained in README"""
+
 import json
 import sys
 from pprint import pprint
@@ -14,17 +16,15 @@ import constants as con
 import tools
 
 def process(ginfo):
+    # Open game and video *********************************************************************** **
     egidx = ginfo.idx_in_encounter
     ename = ginfo.ename
     evdf = tools.load_evdf(ename, egidx)
-    to_vod, to_dem = tools.create_timestamp_conversions(evdf, ginfo.vod_anchors)
-
+    to_tvod, to_tdem = tools.create_timestamp_conversions(evdf, ginfo.vod_anchors)
     vpath = tools.path_of_vod(ename, egidx)
     vidcap = cv2.VideoCapture(vpath)
 
-    for i, (_, ser) in enumerate(
-            list(evdf.iterrows())[:]
-    ):
+    for i, (_, ser) in enumerate(evdf.iterrows()):
         ev, t, round_idx = ser.ev, ser.t, ser.round_idx
         outpath = os.path.join(
             con.DB_PREFIX[os.path.sep],
@@ -34,16 +34,18 @@ def process(ginfo):
         if os.path.isfile(outpath):
             continue
 
+        # Find the 2 images ********************************************************************* **
         imgs = []
-        print(ename, i, ev, round_idx, t, to_vod(t))
+        print(ename, i, ev, round_idx, t, to_tvod(t))
         for offset in [0.000, 0.150]:
-            t1 = int((to_vod(t) - ginfo.vod_file_start_offset + offset) * 1000)
+            t1 = int((to_tvod(t) - ginfo.vod_file_start_offset + offset) * 1000)
             vidcap.set(cv2.CAP_PROP_POS_MSEC, t1)
             success, image = vidcap.read()
             assert success
             image = image[:, :, ::-1]
             imgs.append(image)
 
+        # Plot ********************************************************************************** **
         fig, axes = plt.subplots(nrows=2, ncols=1, constrained_layout=True)
         for j in range(2):
             ax = axes.flatten()[j]

@@ -1,8 +1,16 @@
+"""The light datas are all manually hard coded into this file. The rest sits on the filesystem
+at `DB_PREFIX`.
+"""
+
 import pandas as pd
 
-# encounters (at least 2 maps) => games (at least 15 rounds) => rounds
+DB_PREFIX = {
+    "/": "/mnt/y/d/csgo",
+    "\\": "Y:\\d\\csgo",
+}
 
 def _toser(o):
+    """Recursively convert a constant to a more convenient type"""
     if isinstance(o, (list, tuple)):
         return tuple([_toser(v) for v in o])
     if isinstance(o, (set, frozenset)):
@@ -15,9 +23,6 @@ def _toser(o):
 def _t(t):
     h, m, s = map(float, t.split(":"))
     return h * 3600 + m * 60 + s
-
-# ESL vertigo mirage nuke
-# ESL train overpass inferno dust2
 
 OVERLAYS = (
     dict(
@@ -382,11 +387,6 @@ def _test():
         ]
         assert len(set(events)) == len(events), (g.mname, g.ename, events)
 _test()
-
-DB_PREFIX = {
-    "/": "/mnt/y/d/csgo",
-    "\\": "Y:\\d\\csgo",
-}
 
 _is_set = False
 def _setup_pretty_print():

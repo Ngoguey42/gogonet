@@ -1,3 +1,5 @@
+"""Explained in README"""
+
 import json
 import sys
 from pprint import pprint
@@ -11,23 +13,30 @@ import cv2
 from tqdm import tqdm
 import skimage.transform as skt
 import skimage.io
+
 import constants as con
 import tools
 
 DOWNSAMPLE_SCALE = 0.25
 
+def get_k_largest_indices(a, k):
+    """Output not ordered by indices value"""
+    return sorted(np.argpartition(a, len(a) - k)[-k:])
+
 def process(ginfo):
+    # Open game ********************************************************************************* **
     egidx = ginfo.idx_in_encounter
     ename = ginfo.ename
     evdf = tools.load_evdf(ename, egidx)
     ginfo = con.GAMES[(ename, egidx)]
     oinfo = con.OVERLAYS[ginfo.oname]
-    to_vod, to_dem = tools.create_timestamp_conversions(evdf, ginfo.vod_anchors)
+    to_tvod, to_tdem = tools.create_timestamp_conversions(evdf, ginfo.vod_anchors)
 
+    # Open video ******************************************************************************** **
     path = tools.path_of_vod(ename, egidx)
     print("> opening", path)
     vidcap = cv2.VideoCapture(path)
-    fps = vidcap.get(cv2.CAP_PROP_FPS) # Use the one from `cv2`, not the official one
+    fps = vidcap.get(cv2.CAP_PROP_FPS) # Use the fps from `cv2`, not the official one
 
     evdf = evdf.reset_index().set_index(["ev", "round_idx"], verify_integrity=True)
     for round_idx in sorted(set(evdf.reset_index().round_idx)):
@@ -38,6 +47,8 @@ def process(ginfo):
         )
         if os.path.isfile(outpath):
             continue
+
+        # Compute the round's timings on the video ********************************************** **
         print("> Starting", outpath)
         tdem0 = evdf.loc[("round_freeze_end", round_idx), "t"]
         tdem1 = evdf.loc[("round_end", round_idx), "t"]
@@ -45,20 +56,18 @@ def process(ginfo):
         assert isinstance(tdem1, float), tdem1
         print(f"  > round {round_idx}"
               f", tdem {tools.time_totxt((tdem0))} -> {tools.time_totxt((tdem1))} "
-              f", tvod {tools.time_totxt(to_vod(tdem0))} -> {tools.time_totxt(to_vod(tdem1))}"
+              f", tvod {tools.time_totxt(to_tvod(tdem0))} -> {tools.time_totxt(to_tvod(tdem1))}"
               f", len {tools.time_totxt(tdem1 - tdem0)}"
         )
-
-        f0_float = (to_vod(tdem0) - ginfo.vod_file_start_offset) * fps
+        f0_float = (to_tvod(tdem0) - ginfo.vod_file_start_offset) * fps
         f0 = int(round(f0_float))
         print(f"  > first frame: {f0} ({f0_float:.5f}, {(f0 - f0_float) / fps:+.5f}sec)")
-
         fcount_float = (tdem1 - tdem0) * fps
         fcount = int(np.floor(np.around(fcount_float, 5)))
         print(f"  > frame count: {fcount} ({fcount_float:.5f}, {(fcount - fcount_float) / fps:+.5f}sec)")
-
         vidcap.set(cv2.CAP_PROP_POS_FRAMES, f0)
 
+        # Extract the minimaps from all frames, but downsample to avoid cracking the RAM ******** **
         mmh = int(np.ceil(DOWNSAMPLE_SCALE * oinfo.approx_minimap_height))
         mmw = int(np.ceil(DOWNSAMPLE_SCALE * oinfo.approx_minimap_width))
         assert fcount * mmh * mmw * 3 < 1000 ** 3, "About to allocate a tensor >1GB"
@@ -73,10 +82,8 @@ def process(ginfo):
             img = cv2.resize(img, (mmw, mmh), interpolation=cv2.INTER_CUBIC)
             mms[i] = img
 
+        # Identify and stack 81 images onto a bit one, and save ********************************* **
         mean_adiffs = np.abs(np.diff(mms.astype("int16"), axis=0)).astype("int32").mean(axis=(1, 2, 3))
-        def get_k_largest_indices(a, k): # unordered
-            return sorted(np.argpartition(a, len(a) - k)[-k:])
-
         tiles = []
         for lefti in get_k_largest_indices(mean_adiffs, 8 * 9):
             img = np.hstack([mms[lefti], mms[lefti + 1]])

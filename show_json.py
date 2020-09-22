@@ -1,18 +1,25 @@
+"""Explained in README.
+File dirty.
+"""
+
 from pprint import pprint
 import sys
 
 import numpy as np
 import pandas as pd
+import matplotlib.pyplot as plt
 
 import constants as con
 import tools
 
+print("> Loading game")
 ename, egidx = sys.argv[1:]
 egidx = int(egidx)
 codf = tools.load_codf(ename, egidx)
 ginfo = con.GAMES[(ename, egidx)]
-
-a = np.asarray(codf)
+a = np.asarray(codf[["x", "y", "x"]])
+a0 = a
+print(a.shape)
 
 # print("filtering by coord")
 # xref, yref, delta = -500, -500, 310 # train
@@ -27,22 +34,22 @@ a = np.asarray(codf)
 # a = a[mask]
 # print(a.shape)
 
-print("rounding and dedup coords")
+print("> Decimating coords")
 # a = np.unique(np.around(a.reshape(-1, 3) / 5) * 5, axis=0)
 # a = np.unique(np.around(a.reshape(-1, 3) / 10) * 10, axis=0)
-a = np.unique(np.around(a.reshape(-1, 3) / 20) * 20, axis=0)
-# a = np.unique(np.around(a.reshape(-1, 3) / 40) * 40, axis=0)
+# a = np.unique(np.around(a.reshape(-1, 3) / 20) * 20, axis=0)
+a = np.unique(np.around(a.reshape(-1, 3) / 40) * 40, axis=0)
 a1 = a
 print(a.shape)
 
-import matplotlib.pyplot as plt
+print("> Plotting")
 fig = plt.figure()
 ax = fig.gca(projection='3d')
 
 ax.scatter(a[:, 0], a[:, 1], a[:, 2])
-ax.set_xlabel('X Label')
-ax.set_ylabel('Y Label')
-ax.set_zlabel('Z Label')
+ax.set_xlabel('x')
+ax.set_ylabel('y')
+ax.set_zlabel('z')
 
 ptp = a.ptp(axis=0).max()
 cx, cy, cz = a.mean(axis=0)
