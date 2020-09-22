@@ -66,7 +66,7 @@ For each `game` I tracked down the `vod` timestamp of ≥3 events per game (usin
 
 I found `end of frozen phase`, `bomb planted`, `bomb exploded` and `bomb defused` to be the easiest events to tag on a `vod`. Things like `begining of frozen phase` or `player death` don't have clear visual clues.
 
-Manually reaching a frame-perfect co-registration is impossible, so I will still have to be careful about some details like players death and their disapearance from the minimap.
+Manually reaching a frame-perfect co-registration is impossible, so I will still have to be careful about some details like players death or players disconnection and their disapearance from the minimap.
 
 ### Script: [plot_time_coregistration.py](plot_time_coregistration.py)
 Using this script I can check the validity of the co-registration on the events that I haven't manually tagged.
@@ -137,7 +137,8 @@ Minimap icons are circles but because of the rasterization, the antialiasing and
 
 The most efficient method I found was to manually fit a disk using `QGis` and then to retrieve the centroid of the disk. I then used some linear algebra to compute the shift and scale coefficients that encode the coordinate system conversions. See [plot_minimap_coregistration.py](plot_minimap_coregistration.py) for more details.
 
-> My annotations of `train` for the `ESL` overlay
+> My annotations of `train` for the `ESL` overlay.
+> On this exemple the transformation from i/j to x/y is `([j, -i] - [223.27, 192.41]) / 0.07826`. A pixel is 12.77 unit large.
 ![minimap_clicks](images/minimap_clicks.png)
 
 #### How precise should be the clicks?
@@ -183,6 +184,8 @@ TODO: How many training step? 1 might not be possible. Training the `seqnet` aft
 TODO: Which set weights are specialized for one maps? Some meta-learning magic?
 
 TODO: Should the `seqnet` have any concept of elevation?
+
+TODO: Some triplet loss magic to enforce some constraints of the SHS or the conv kernel? (Could constrain conv some weights to be similar, per-map)
 
 Supervision ideas for `convnet`:
 - player count in "super" pixels for each stride, directly from shared hidden state
