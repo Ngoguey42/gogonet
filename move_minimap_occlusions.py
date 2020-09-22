@@ -6,13 +6,13 @@ l = []
 for ginfo in con.GAMES.values:
     egidx = ginfo.idx_in_encounter
     ename = ginfo.ename
-    dfticks, dfevs = tools.load_json(ename, egidx)
+    evdf = tools.load_evdf(ename, egidx)
     ginfo = con.GAMES[(ename, egidx)]
     fps = ginfo.vod_framerate
     oinfo = con.OVERLAYS[ginfo.oname]
-    to_vod, to_dem = tools.create_timestamp_conversions(dfevs, ginfo.vod_anchors)
-    dfevs = dfevs.reset_index().set_index(["ev", "round_idx"], verify_integrity=True)
-    for round_idx in sorted(set(dfevs.reset_index().round_idx)):
+    to_vod, to_dem = tools.create_timestamp_conversions(evdf, ginfo.vod_anchors)
+    evdf = evdf.reset_index().set_index(["ev", "round_idx"], verify_integrity=True)
+    for round_idx in sorted(set(evdf.reset_index().round_idx)):
         if round_idx not in ginfo.partial_minimap_rounds:
             continue
         outpath = os.path.join(

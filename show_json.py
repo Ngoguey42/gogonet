@@ -9,10 +9,10 @@ import tools
 
 ename, egidx = sys.argv[1:]
 egidx = int(egidx)
-dfticks, dfevs = tools.load_json(ename, egidx)
+codf = tools.load_codf(ename, egidx)
 ginfo = con.GAMES[(ename, egidx)]
 
-a = np.asarray(dfticks)
+a = np.asarray(codf)
 
 # print("filtering by coord")
 # xref, yref, delta = -500, -500, 310 # train

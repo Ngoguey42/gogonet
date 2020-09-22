@@ -157,6 +157,10 @@ GAMES=(
         ),
         # partial_minimap_rounds={0, 13, 16, 29, 33},
         partial_minimap_rounds={0, 13, 14, 16, 22, 30, 32},
+        players_order=(
+            "tiziaN", "k1to", "tabseN", "XANTARES", "syrsoN",
+            "STYKO", "maden", "kRYSTAL", "Farlig", "Zehn",
+        ),
     ),
     dict(
         **ENCOUNTERS["2343670_big-vs-godsent-esl-pro-league-season-12-europe"],
@@ -174,6 +178,10 @@ GAMES=(
         ),
         # partial_minimap_rounds={0, 8, 13, 14, 15, 19, 20, 23, 25, 27, 29, 30, 31, 33, 35, 38, 40},
         partial_minimap_rounds={0, 1, 10, 11, 13, 15, 16, 18, 22, 25, 27, 30, 33, 38},
+        players_order=(
+            "maden", "STYKO", "Farlig", "Zehn", "kRYSTAL",
+            "syrsoN", "XANTARES", "k1to", "tabseN", "tiziaN",
+        ),
     ),
     dict(
         **ENCOUNTERS["2343670_big-vs-godsent-esl-pro-league-season-12-europe"],
@@ -192,6 +200,10 @@ GAMES=(
         #     0, # On round 0a player has an `undefined` minimap text
         # },
         partial_minimap_rounds={0, 6, 7, 11, 16, 18, 19, },
+        players_order=(
+            "syrsoN", "tiziaN", "k1to", "tabseN", "XANTARES",
+            "Farlig", "maden", "kRYSTAL", "STYKO", "Zehn",
+        ),
     ),
     dict(
         **ENCOUNTERS["2343922_gambit-youngsters-vs-sprout-nine-to-five-4"],
@@ -208,6 +220,10 @@ GAMES=(
             ("clap", "round_first_displacement", 41, _t("01:26:41.588")),
         ),
         partial_minimap_rounds={5, 18, 19, 23, 32, 35, },
+        players_order=(
+            "interz", "HObbit", "nafany", "sh1ro", "Ax1Le",
+             "dycha", "snatchie", "denis", "faveN", "Spiidi",
+        ),
     ),
     dict(
         **ENCOUNTERS["2343922_gambit-youngsters-vs-sprout-nine-to-five-4"],
@@ -227,6 +243,10 @@ GAMES=(
             # ("clap", "round_first_displacement", 15 + 14, occluded
         ),
         partial_minimap_rounds={1, 17, 18, 24, 29},
+        players_order=(
+            "interz", "sh1ro", "nafany", "HObbit", "Ax1Le",
+            "faveN", "dycha", "snatchie", "Spiidi", "denis",
+        ),
     ),
     dict(
         **ENCOUNTERS["2343922_gambit-youngsters-vs-sprout-nine-to-five-4"],
@@ -245,6 +265,10 @@ GAMES=(
         ),
         partial_minimap_rounds={1, 9, 12},
         # partial_minimap_rounds={},
+        players_order=(
+            "dycha", "snatchie", "Spiidi", "denis", "faveN",
+            "interz", "sh1ro", "nafany", "HObbit", "Ax1Le",
+        ),
     ),
 
     # Second batch ****************************************************************************** **
@@ -261,6 +285,10 @@ GAMES=(
         ),
         # partial_minimap_rounds={7, 8, 10, 14, 17, 23, 28},
         partial_minimap_rounds={5, 7, 8, 10, 14, 15, 17, 22, 23, 25},
+        players_order=(
+            "misutaaa", "ZywOo", "apEX", "RpK", "shox",
+            "flusha", "JW", "KRIMZ", "Golden", "Brollan",
+        ),
     ),
     dict(
         **ENCOUNTERS["2343666_vitality-vs-fnatic-esl-pro-league-season-12-europe"],
@@ -275,6 +303,10 @@ GAMES=(
         ),
         # partial_minimap_rounds={0, 1, 2, 7, 8, 9, 10, 11, 14, 18, 19, 20, 22, 23},
         partial_minimap_rounds={0, 2, 4, 6, 7, 12, 13, 17, 19, 22},
+        players_order=(
+            "flusha", "KRIMZ", "Brollan", "Golden", "JW",
+            "misutaaa", "ZywOo", "shox", "apEX", "RpK",
+        ),
     ),
     dict(
         **ENCOUNTERS["2343663_natus-vincere-vs-og-esl-pro-league-season-12-europe"],
@@ -289,6 +321,10 @@ GAMES=(
         ),
         # partial_minimap_rounds={4, 12, 13, 14, 25},
         partial_minimap_rounds={2, 4, 6, 8, 12, 13, 14, 15, 20, 23, 24},
+        players_order=(
+            "electronic", "Perfecto", "Boombl4", "flamie", "s1mple",
+            "Aleksib", "valde", "mantuu", "NBK-", "ISSAA",
+        ),
     ),
     dict(
         **ENCOUNTERS["2343663_natus-vincere-vs-og-esl-pro-league-season-12-europe"],
@@ -303,6 +339,10 @@ GAMES=(
         ),
         # partial_minimap_rounds={4, 10, 12, 14, 18, 20, 21, 22, 23},
         partial_minimap_rounds={0, 4, 5, 9, 11, 12, 14, 19, 20, 21, 23},
+        players_order=(
+            "ISSAA", "valde", "Aleksib", "NBK-", "mantuu",
+            "Perfecto", "Boombl4", "flamie", "s1mple", "electronic",
+        ),
     ),
 
 )
@@ -340,3 +380,23 @@ DB_PREFIX = {
     "/": "/mnt/y/d/csgo",
     "\\": "Y:\\d\\csgo",
 }
+
+_is_set = False
+def _setup_pretty_print():
+    global _is_set
+    if _is_set:
+        return
+    _is_set = True
+
+    import pandas as pd
+    import numpy as np
+
+    pd.set_option('display.width', 500)
+    pd.set_option('display.max_colwidth', 260)
+    pd.set_option('display.float_format', lambda x: '%.8f' % x)
+    pd.set_option('display.max_columns', 25)
+    pd.set_option('display.max_rows', 1000)
+
+    np.set_printoptions(linewidth=250, threshold=999999999999, suppress=True)
+
+_setup_pretty_print()

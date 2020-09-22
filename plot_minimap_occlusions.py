@@ -19,18 +19,18 @@ DOWNSAMPLE_SCALE = 0.25
 def process(ginfo):
     egidx = ginfo.idx_in_encounter
     ename = ginfo.ename
-    dfticks, dfevs = tools.load_json(ename, egidx)
+    evdf = tools.load_evdf(ename, egidx)
     ginfo = con.GAMES[(ename, egidx)]
     oinfo = con.OVERLAYS[ginfo.oname]
-    to_vod, to_dem = tools.create_timestamp_conversions(dfevs, ginfo.vod_anchors)
+    to_vod, to_dem = tools.create_timestamp_conversions(evdf, ginfo.vod_anchors)
 
     path = tools.path_of_vod(ename, egidx)
     print("> opening", path)
     vidcap = cv2.VideoCapture(path)
     fps = vidcap.get(cv2.CAP_PROP_FPS) # Use the one from `cv2`, not the official one
 
-    dfevs = dfevs.reset_index().set_index(["ev", "round_idx"], verify_integrity=True)
-    for round_idx in sorted(set(dfevs.reset_index().round_idx)):
+    evdf = evdf.reset_index().set_index(["ev", "round_idx"], verify_integrity=True)
+    for round_idx in sorted(set(evdf.reset_index().round_idx)):
         outpath = os.path.join(
             con.DB_PREFIX[os.path.sep],
             "mm_occlusions",
@@ -39,8 +39,8 @@ def process(ginfo):
         if os.path.isfile(outpath):
             continue
         print("> Starting", outpath)
-        tdem0 = dfevs.loc[("round_freeze_end", round_idx), "t"]
-        tdem1 = dfevs.loc[("round_end", round_idx), "t"]
+        tdem0 = evdf.loc[("round_freeze_end", round_idx), "t"]
+        tdem1 = evdf.loc[("round_end", round_idx), "t"]
         assert isinstance(tdem0, float), tdem0
         assert isinstance(tdem1, float), tdem1
         print(f"  > round {round_idx}"

@@ -17,15 +17,15 @@ for (ename, egidx), ginfo in con.GAMES.items():
     print(ename)
     print(egidx, ginfo.mname)
 
-    _, dfevs = tools.load_json(ename, egidx)
-    print("first `dem` event:", dict(dfevs.iloc[0]))
+    evdf = tools.load_evdf(ename, egidx)
+    print("first `dem` event:", dict(evdf.iloc[0]))
 
-    dfevs = dfevs.reset_index().set_index(["ev", "round_idx"])
+    evdf = evdf.reset_index().set_index(["ev", "round_idx"])
     def get_tdem(ev, round_idx):
         """Find the event in df"""
         if ev == "round_first_displacement":
             ev = "round_freeze_end" # TODO: Find the time displacement between those 2 events
-        return float(dfevs.loc[(ev, round_idx), "t"])
+        return float(evdf.loc[(ev, round_idx), "t"])
 
     claps = [
         pd.Series(dict(idx=i, tvod=a[3],
@@ -37,7 +37,7 @@ for (ename, egidx), ginfo in con.GAMES.items():
     for left_out_clap in claps:
         anchors = list(ginfo.vod_anchors)
         anchors.pop(left_out_clap.idx)
-        to_vod, _ = tools.create_timestamp_conversions(dfevs, anchors)
+        to_vod, _ = tools.create_timestamp_conversions(evdf, anchors)
         left_out_clap["tvod_pred"] = to_vod(left_out_clap.tdem)
 
     df = pd.DataFrame(claps)

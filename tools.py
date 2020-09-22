@@ -72,15 +72,15 @@ def segment_rounds(evs):
 
     return rounds
 
-def create_tdem_classifier(dfevs):
+def create_tdem_classifier(evdf):
     tree = intervaltree.IntervalTree()
 
-    round_idxs = set(list(dfevs.round_idx.values))
-    dfevs = dfevs.set_index(["round_idx", "ev"])
+    round_idxs = set(list(evdf.round_idx.values))
+    evdf = evdf.set_index(["round_idx", "ev"])
     for round_idx in round_idxs:
-        a = dfevs.loc[(round_idx, "round_start")].iloc[0]
-        b = dfevs.loc[(round_idx, "round_freeze_end")].iloc[0]
-        c = dfevs.loc[(round_idx, "round_end")].iloc[0]
+        a = evdf.loc[(round_idx, "round_start")].iloc[0]
+        b = evdf.loc[(round_idx, "round_freeze_end")].iloc[0]
+        c = evdf.loc[(round_idx, "round_end")].iloc[0]
         c = np.nextafter(c, -np.inf) # Avoid overlaps
         tree[a:b] = ("frozen", round_idx)
         tree[b:c] = ("playing", round_idx)
@@ -94,16 +94,16 @@ def create_tdem_classifier(dfevs):
             return "out", None
     return classify
 
-def classify_tdem(dfevs, t):
-    if t < dfevs.t.iloc[0]:
+def classify_tdem(evdf, t):
+    if t < evdf.t.iloc[0]:
         return "out", None
-    for i, u in dfevs.t.items():
+    for i, u in evdf.t.items():
         if u >= t:
             break
     else:
         return "out", None
-    round_idx = dfevs.round_idx.loc[i]
-    df = dfevs.query(f"round_idx == {round_idx}").set_index("ev")
+    round_idx = evdf.round_idx.loc[i]
+    df = evdf.query(f"round_idx == {round_idx}").set_index("ev")
     if t < df.t.loc["round_start"]:
         return "out", None
     elif t < df.t.loc["round_freeze_end"]:
@@ -112,11 +112,6 @@ def classify_tdem(dfevs, t):
         return "playing", round_idx
     else:
         return "out", None
-
-def path_of_json(ename, egidx):
-    prefix = con.DB_PREFIX[os.path.sep]
-    mname = con.GAMES[(ename, egidx)].mname
-    return os.path.join(prefix, f"{ename}_{egidx}_{mname}.json")
 
 def path_of_vod(ename, egidx):
     prefix = con.DB_PREFIX[os.path.sep]
@@ -131,45 +126,97 @@ def time_totxt(v):
     s = (v - h * 3600 - m * 60)
     return f"{sign}{h:02.0f}:{m:02.0f}:{s:06.3f}"
 
-def load_json(ename, egidx):
-    path = path_of_json(ename, egidx)
-    # print("reading", path)
+def load_codf(ename, egidx):
+    # codf - coordinates data frame
+    prefix = con.DB_PREFIX[os.path.sep]
+    mname = con.GAMES[(ename, egidx)].mname
+    path = os.path.join(prefix, f"{ename}_{egidx}_{mname}_coords.json")
+
     j = open(path).read()
+    l = json.loads(j)
 
-    # print("parsing json")
-    j = json.loads(j)
-    # print("slicing json")
-    l = [ev for ev in j if ev["ev"] == "tickend"]
-
-    # print("making df")
     rows = []
-    for ev in l:
-        for pid, (x, y, z, alive) in ev["pinfo"].items():
+    for t, pinfos in l:
+        for pname, [alive, x, y, z] in pinfos.items():
             if not alive:
                 continue
             rows.append(dict(
-                x=x, y=y, z=z, t=ev["t"], pid=pid,
+                x=x, y=y, z=z, t=t, pname=pname,
             ))
-    dfticks = pd.DataFrame(rows).set_index(["t", "pid"], verify_integrity=True)
-    dfticks = dfticks.reset_index()
-    # print(dfticks)
+    codf = pd.DataFrame(rows).set_index(["t", "pname"], verify_integrity=True)
+    codf = codf.reset_index()
+    return codf
+
+def load_evdf(ename, egidx):
+    # evdf - events data frame
+    prefix = con.DB_PREFIX[os.path.sep]
+    mname = con.GAMES[(ename, egidx)].mname
+    path = os.path.join(prefix, f"{ename}_{egidx}_{mname}_events.json")
+
+    j = open(path).read()
+    j = json.loads(j)
 
     rows = []
-    for r in segment_rounds([ev for ev in j if ev["ev"] != "tickend"]):
-        # print("**********************************************************************")
-        # pprint(r)
+    for r in segment_rounds(j):
         round_idx = r.pop("round_idx")
         rows.extend([
             dict(ev=k, t=v, round_idx=round_idx)
             for k, v in r.items()
         ])
-    dfevs = pd.DataFrame(rows) #.set_index("t", verify_integrity=True)
-    # print(dfevs)
+    evdf = pd.DataFrame(rows)
+    return evdf
 
-    return dfticks, dfevs
+def load_compodf(ename, egidx):
+    # compodf - compoents data frame
+    prefix = con.DB_PREFIX[os.path.sep]
+    mname = con.GAMES[(ename, egidx)].mname
+    path = os.path.join(prefix, f"{ename}_{egidx}_{mname}_compo.json")
 
-def create_timestamp_conversions(dfevs, anchors):
-    df = dfevs.reset_index().set_index(["ev", "round_idx"])
+    j = open(path).read()
+    j = json.loads(j)
+
+    rows = []
+    for r in j:
+        rows.append({
+            "t": r["t"],
+            "terro": tuple(r["terro"]),
+            "ct": tuple(r["ct"]),
+            "terro_count": len(r["terro"]),
+            "ct_count": len(r["ct"]),
+        })
+    compodf = pd.DataFrame(rows)
+    return compodf
+
+def load_iconsdf(ename, egidx):
+    ginfo = con.GAMES[(ename, egidx)]
+    tvod = ginfo.annotated_vod_frame
+    path = os.path.join(
+        con.DB_PREFIX[os.path.sep],
+        "mm_localisation",
+        f"{ename}_{egidx}_{ginfo.mname}_{time_totxt(tvod).replace(':', '-')}.geojson",
+    )
+    j = json.loads(open(path).read()) # May raise in normal use-cases
+    iconsdf = pd.DataFrame([
+        dict(
+            label=int(ft["properties"]["label"]),
+            x=x,
+            y=y,
+        )
+        for ft in j["features"]
+        # [1, -1] to correct the y flip from qgis
+        # -0.5 to correct the fact that qgis treats pixels as points (and not areas)
+        for (x, y) in [np.asarray(ft["geometry"]["coordinates"][0]).mean(axis=0) * [1, -1] - 0.5]
+    ])
+    iconsdf["label"] = iconsdf.label.apply(lambda lab : lab if lab != 0 else 10)
+    iconsdf["pname"] = iconsdf.label.apply(lambda lab: ginfo.players_order[lab - 1])
+    iconsdf = iconsdf.sort_values("label")
+    assert len(iconsdf.label) == len(set(iconsdf.label))
+    assert (iconsdf.label >= 1).all()
+    assert (iconsdf.label <= 10).all()
+    return iconsdf
+
+def create_timestamp_conversions(evdf, anchors):
+    df = evdf.reset_index().set_index(["ev", "round_idx"])
 
     def get_tdem(ev, round_idx):
         """Find the event in df"""

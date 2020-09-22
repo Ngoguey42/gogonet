@@ -2,56 +2,95 @@ const fs = require("fs");
 const demofile = require("demofile");
 const util = require('util');
 
-const STEP = 1.
+/* const STEP = 1.*/
+const STEP = null
 
 const p = process.argv[2]
 console.log('>   dem input path:', p);
-const q = p.slice(0, -3) + "json"
-console.log('> json output path:', q);
+const q0 = p.slice(0, -4) + "_events.json"
+const q1 = p.slice(0, -4) + "_coords.json"
+const q2 = p.slice(0, -4) + "_compo.json"
+console.log('> json output paths:', q0);
+console.log('                    ', q1);
+console.log('                    ', q2);
 
-var j = []
-var pname_of_pid = {}
+var events = []
+var coords = []
+var compositions = []
 
 function bind_get(val, propname) {
   if (val == null)
     return null
-  return val[propname]
-}
+  if (val == undefined)
+    return null
 
-function bind_set(val, k, v) {
-  if (v !== null)
-    val[k] = v
+  val = val[propname]
+  if (val == undefined)
+    return null
+  return val
 }
 
 fs.readFile(p, (err, buffer) => {
   const demoFile = new demofile.DemoFile();
 
-  demoFile.on("tickend", e => {
-    if (demoFile.currentTime % STEP != 0)
+  demoFile.on("tickend", _ => {
+
+    /* Get arrays */
+    var t_members = bind_get(bind_get(bind_get(demoFile, "teams"), 2), "members")
+    var ct_members = bind_get(bind_get(bind_get(demoFile, "teams"), 3), "members")
+    if (t_members == null || ct_members == null)
       return
 
-    const ts = bind_get(bind_get(bind_get(demoFile, "teams"), 2), "members")
-    const cts = bind_get(bind_get(bind_get(demoFile, "teams"), 3), "members")
-    const pinfo = {}
-    for (team of [ts, cts]) {
-      for (var i = 0; i < 5; i++) {
-        const p = bind_get(team, i)
-        xyz = bind_get(p, "position")
-        id = bind_get(p, "userId")
-        isAlive = bind_get(p, "isAlive")
-        if (xyz == null || id == null || isAlive == null)
-          continue
-        if (pname_of_pid[id] == undefined)
-          pname_of_pid[id] = p.name
-        if (pname_of_pid[id] != p.name) {
-          console.log(p.id, p.name, pname_of_pid)
+    /* Get players */
+    function is_valid_player(p) {
+      return bind_get(p, "userId") != null &&
+             bind_get(p, "name") != null &&
+             bind_get(p, "isAlive") != null &&
+             bind_get(p, "position") != null
+    }
+    t_members = t_members.filter(is_valid_player)
+    ct_members = ct_members.filter(is_valid_player)
+    const t_pids = t_members.map(p => bind_get(p, "userId")).sort((a, b) => a - b);
+    const ct_pids = ct_members.map(p => bind_get(p, "userId")).sort((a, b) => a - b);
+
+    /* Get players info*/
+    const pinfo_of_pid = {}
+    const pname_of_pid = {}
+    for (const team of [t_members, ct_members]) {
+      for (const p of team) {
+        xyz = p.position
+        id = p.userId
+        isAlive = p.isAlive
+        if (pinfo_of_pid[id] != undefined) {
+          console.log(p, pinfo_of_pid)
           throw "oops"
         }
-        pinfo[id] = [xyz.x, xyz.y, xyz.z, isAlive]
+        pinfo_of_pid[id] = [isAlive, xyz.x, xyz.y, xyz.z]
+        pname_of_pid[id] = p.name
       }
     }
-    if (Object.keys(pinfo).length > 0) {
-      j.push({"ev": "tickend", "t": demoFile.currentTime, "pinfo": pinfo})
+
+    /* Save composition*/
+    var compo = {
+      "t": (compositions.length == 0 ? 0. : demoFile.currentTime),
+      "terro": t_pids.map(pid => pname_of_pid[pid]),
+      "ct": ct_pids.map(pid => pname_of_pid[pid]),
+    }
+    if (compositions.length == 0 ||
+        !util.isDeepStrictEqual(compositions[compositions.length - 1]["terro"], compo["terro"]) ||
+        !util.isDeepStrictEqual(compositions[compositions.length - 1]["ct"], compo["ct"])
+    ) {
+      compositions.push(compo)
+      console.log(compositions[compositions.length - 1], compositions.length)
+    }
+
+    /* Save coordinates*/
+    if (demoFile.currentTime >= 0 && (STEP != null ? demoFile.currentTime % STEP == 0 : true)) {
+      var d = {}
+      for (pid of t_pids.concat(ct_pids))
+        d[pname_of_pid[pid]] = pinfo_of_pid[pid]
+      coords.push([demoFile.currentTime, d])
+      /* console.log(coords[coords.length - 1], coords.length)*/
     }
 
   });
@@ -103,51 +142,53 @@ fs.readFile(p, (err, buffer) => {
 
   demoFile.gameEvents.on("round_officially_ended", e => {
     idx = demoFile.teams[2].score + demoFile.teams[3].score
-    j.push({"ev": "round_officially_ended", "round_idx": idx, "t": demoFile.currentTime})
-    console.log(j[j.length - 1], j.length, demoFile.teams[2].score, demoFile.teams[3].score)
+    events.push({"ev": "round_officially_ended", "round_idx": idx, "t": demoFile.currentTime})
+    console.log(events[events.length - 1], events.length, demoFile.teams[2].score, demoFile.teams[3].score)
   });
 
   demoFile.gameEvents.on("round_end", e => {
     idx = demoFile.teams[2].score + demoFile.teams[3].score
-    j.push({"ev": "round_end", "round_idx": idx, "t": demoFile.currentTime})
-    console.log(j[j.length - 1], j.length, demoFile.teams[2].score, demoFile.teams[3].score)
+    events.push({"ev": "round_end", "round_idx": idx, "t": demoFile.currentTime})
+    console.log(events[events.length - 1], events.length, demoFile.teams[2].score, demoFile.teams[3].score)
   });
 
   demoFile.gameEvents.on("round_freeze_end", e => {
     idx = demoFile.teams[2].score + demoFile.teams[3].score
-    j.push({"ev": "round_freeze_end", "round_idx": idx, "t": demoFile.currentTime})
-    console.log(j[j.length - 1], j.length)
+    events.push({"ev": "round_freeze_end", "round_idx": idx, "t": demoFile.currentTime})
+    console.log(events[events.length - 1], events.length)
   });
 
   demoFile.gameEvents.on("round_start", e => {
     idx = demoFile.teams[2].score + demoFile.teams[3].score
-    j.push({"ev": "round_start", "round_idx": idx, "t": demoFile.currentTime})
-    console.log(j[j.length - 1], j.length, demoFile.teams[2].score, demoFile.teams[3].score)
+    events.push({"ev": "round_start", "round_idx": idx, "t": demoFile.currentTime})
+    console.log(events[events.length - 1], events.length, demoFile.teams[2].score, demoFile.teams[3].score)
   });
 
   demoFile.gameEvents.on("bomb_planted", e => {
     idx = demoFile.teams[2].score + demoFile.teams[3].score
-    j.push({"ev": "bomb_planted", "round_idx": idx, "t": demoFile.currentTime})
-    console.log(j[j.length - 1], j.length)
+    events.push({"ev": "bomb_planted", "round_idx": idx, "t": demoFile.currentTime})
+    console.log(events[events.length - 1], events.length)
   });
 
   demoFile.gameEvents.on("bomb_exploded", e => {
     idx = demoFile.teams[2].score + demoFile.teams[3].score
-    j.push({"ev": "bomb_exploded", "round_idx": idx, "t": demoFile.currentTime})
-    console.log(j[j.length - 1], j.length)
+    events.push({"ev": "bomb_exploded", "round_idx": idx, "t": demoFile.currentTime})
+    console.log(events[events.length - 1], events.length)
   });
 
   demoFile.gameEvents.on("bomb_defused", e => {
     idx = demoFile.teams[2].score + demoFile.teams[3].score
-    j.push({"ev": "bomb_defused", "round_idx": idx, "t": demoFile.currentTime})
-    console.log(j[j.length - 1], j.length)
+    events.push({"ev": "bomb_defused", "round_idx": idx, "t": demoFile.currentTime})
+    console.log(events[events.length - 1], events.length)
   });
 
   demoFile.on("end", e => {
     a = demoFile.teams[2].score
     b = demoFile.teams[3].score
     console.log('> %d end %d (%d/%d)', demoFile.currentTime, a + b, a, b);
-    fs.writeFileSync(q, JSON.stringify(j));
+    fs.writeFileSync(q0, JSON.stringify(events))
+    fs.writeFileSync(q1, JSON.stringify(coords))
+    fs.writeFileSync(q2, JSON.stringify(compositions))
   });
 
   demoFile.on("error", e => {

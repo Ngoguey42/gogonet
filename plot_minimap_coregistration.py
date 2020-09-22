@@ -4,6 +4,7 @@ import sys
 from concurrent.futures import ProcessPoolExecutor
 import re
 
+import pandas as pd
 import numpy as np
 import scipy.spatial
 import matplotlib.pyplot as plt
@@ -16,29 +17,39 @@ import constants as con
 def process(ginfo):
     egidx = ginfo.idx_in_encounter
     ename = ginfo.ename
-    dfticks, dfevs = tools.load_json(ename, egidx)
     ginfo = con.GAMES[(ename, egidx)]
+    codf, evdf = tools.load_codf(ename, egidx), tools.load_evdf(ename, egidx)
+    compodf = tools.load_compodf(ename, egidx)
 
-    print()
     print(f"** {ename} ** {egidx} ** {ginfo.mname} ****************************************")
     oinfo = con.OVERLAYS[ginfo.oname]
-    to_vod, to_dem = tools.create_timestamp_conversions(dfevs, ginfo.vod_anchors)
+    to_vod, to_dem = tools.create_timestamp_conversions(evdf, ginfo.vod_anchors)
 
-    classify_tdem = tools.create_tdem_classifier(dfevs)
+    classify_tdem = tools.create_tdem_classifier(evdf)
     classif_per_row = {
         i: classify_tdem(row.t)
-        for i, row in dfticks.iterrows()
+        for i, row in codf.iterrows()
     }
-    dfticks["game_state"] = dfticks.reset_index()["index"].apply(lambda idx: classif_per_row[idx][0])
-    dfticks["round_idx"] = dfticks.reset_index()["index"].apply(lambda idx: classif_per_row[idx][1])
+    codf["game_state"] = codf.reset_index()["index"].apply(lambda idx: classif_per_row[idx][0])
+    codf["round_idx"] = codf.reset_index()["index"].apply(lambda idx: classif_per_row[idx][1])
 
-    dfticks = dfticks[dfticks.game_state == "playing"]
-    dfticks["round_idx"] = dfticks["round_idx"].astype(int)
-    dfticks = dfticks[dfticks.round_idx.apply(lambda i: i not in ginfo.partial_minimap_rounds)]
+    codf = codf[codf.game_state == "playing"]
+    codf["round_idx"] = codf["round_idx"].astype(int)
+    codf = codf[codf.round_idx.apply(lambda i: i not in ginfo.partial_minimap_rounds)]
+
+    # Print player composition ****************************************************************** **
+    tmp = compodf.copy()
+    tmp["terro"] = tmp.terro.apply(
+        lambda l: "".join(map('"{}", '.format, l))
+    )
+    tmp["ct"] = tmp.ct.apply(
+        lambda l: "".join(map('"{}", '.format, l))
+    )
+    print(tmp.query("ct_count == 5 & terro_count == 5"))
 
     # Players movement speed ******************************************************************** **
     speeds = []
-    for pid, df in dfticks.groupby(["pid", "round_idx"]):
+    for _, df in codf.groupby(["pname", "round_idx"]):
         dxy = ((df.x.diff() ** 2 + df.y.diff() ** 2) ** 0.5)
         dt = df.t.diff()
         speeds.append((dxy / dt).sort_values().dropna().values)
@@ -61,7 +72,7 @@ def process(ginfo):
     # Most spread timestamp ********************************************************************* **
     groups = [
         (tdem, df, round_idx)
-        for (round_idx, tdem), df in dfticks.reset_index().groupby(["round_idx", "t"])
+        for (round_idx, tdem), df in codf.reset_index().groupby(["round_idx", "t"])
         if len(df) >= 9
     ]
     coords = [np.c_[df.x, df.y] for (_, df, _) in groups]
@@ -99,31 +110,26 @@ def process(ginfo):
     img = img[:, :, ::-1]
     skimage.io.imsave(outpath, img)
 
-    #
-    geojsonpath = os.path.join(
+    # Plot more infos to check manual clicks **************************************************** **
+    try:
+        iconsdf = tools.load_iconsdf(ename, egidx, tvod)
+    except FileNotFoundError:
+        return
+    print(iconsdf)
+
+    outpath = os.path.join(
         con.DB_PREFIX[os.path.sep],
         "mm_localisation",
-        f"{ename}_{egidx}_{ginfo.mname}_{tools.time_totxt(tvod).replace(':', '-')}.geojson",
+        f"{ename}_{egidx}_{ginfo.mname}_{tools.time_totxt(tvod).replace(':', '-')}_check.png",
     )
-    if os.path.isfile(geojsonpath):
-        outpath = os.path.join(
-            con.DB_PREFIX[os.path.sep],
-            "mm_localisation",
-            f"{ename}_{egidx}_{ginfo.mname}_{tools.time_totxt(tvod).replace(':', '-')}_check.png",
-        )
-        img = img[:oinfo.approx_minimap_slice[0].stop,
-                  :oinfo.approx_minimap_slice[1].stop]
-        figure, ax = plt.subplots()
-        ax.imshow(img)
-        j = json.loads(open(geojsonpath).read())
-        for i in range(10):
-            xy = np.asarray(j["features"][i]["geometry"]["coordinates"][0])
-            # [1, -1] to correct the y flip from qgis
-            # -0.5 to correct the fact that qgis treats pixels as points (and not areas)
-            x, y = xy.mean(axis=0) * [1, -1] - 0.5
-            ax.add_artist(plt.Circle((x, y), 8.))
-        plt.savefig(outpath, dpi=2000)
-        plt.close("all")
+    img = img[:oinfo.approx_minimap_slice[0].stop,
+              :oinfo.approx_minimap_slice[1].stop]
+    figure, ax = plt.subplots()
+    ax.imshow(img)
+    for _, ser in iconsdf.iterrows():
+        ax.add_artist(plt.Circle(tuple(ser.xy), 8.))
+    plt.savefig(outpath, dpi=2000)
+    plt.close("all")
 
 if __name__ == "__main__":
     sys.argv += [".*", ".*", ".*", ".*"]
@@ -140,10 +146,9 @@ if __name__ == "__main__":
     ]
     print("Will do:")
     for ginfo in ginfos:
-        print("-", ginfo.ename, ginfo.idx_in_encounter, ginfo.mname
-)
+        print("-", ginfo.ename, ginfo.idx_in_encounter, ginfo.mname)
     with ProcessPoolExecutor(7) as ex:
-    # with ProcessPoolExecutor(1) as ex:
-        list(ex.map(process, ginfos))
+        list(map(process, ginfos))
+        # list(ex.map(process, ginfos))
 
 #

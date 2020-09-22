@@ -16,14 +16,14 @@ import tools
 def process(ginfo):
     egidx = ginfo.idx_in_encounter
     ename = ginfo.ename
-    _, dfevs = tools.load_json(ename, egidx)
-    to_vod, to_dem = tools.create_timestamp_conversions(dfevs, ginfo.vod_anchors)
+    evdf = tools.load_evdf(ename, egidx)
+    to_vod, to_dem = tools.create_timestamp_conversions(evdf, ginfo.vod_anchors)
 
     vpath = tools.path_of_vod(ename, egidx)
     vidcap = cv2.VideoCapture(vpath)
 
     for i, (_, ser) in enumerate(
-            list(dfevs.iterrows())[:]
+            list(evdf.iterrows())[:]
     ):
         ev, t, round_idx = ser.ev, ser.t, ser.round_idx
         outpath = os.path.join(
