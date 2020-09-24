@@ -5,14 +5,14 @@ This project is an attempt to transpose this
 from `lol` to `csgo` in the task of guessing the player's coordinates by only looking at the minimap in an esport video stream.
 
 With more word: the goal is to create a program being able to ingest a live video stream of a `csgo` competition,
-produce an xyz coordinate for each player alive,
+produce the xyz coordinates for each player alive,
 on all frames where the minimap is visible,
 on a fixed set of `csgo` maps and
 on any UI layouts, even the ones not trained for.
 
 Additionally the network will be in charge of saying whether or not a minimap is visible and also saying where the minimap is (if any).
 
-This program looses all interest if we have access to the stream of events from the `csgo` server.
+This program will be especially useful in the situations where the access to the stream of events from the `csgo` server is not available.
 
 ---
 

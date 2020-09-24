@@ -69,7 +69,7 @@ This will be useful to reduce the number of convolutions by focusing where the m
 - `vod` for `Video On Demand` - the video files.
 - `dem` for `DEMo file` - the CSGO replay files.
 - `overlay` is the UI layout specific to a broadcast.
-- `encounter` is a collection of games (usually best of 3).
+- `encounter` is a collection of games (usually best of 3). One encounter <=> One video.
 - `game` is a collection of rounds (usually best of 30).
 - A `round` has at least a start, a freeze_end, a stop. Only the round where the minimap isn't
   hidden from `freeze_end` to `stop` are kept for training and testing (roughly 2/3 of them).
@@ -80,8 +80,10 @@ This will be useful to reduce the number of convolutions by focusing where the m
   The same goes for `tdem` and the dem ticks.
 - `to_tvod` and `to_tdem` are the conversion functions for the 2 types of timings. See `tools.py`
   for the implementation.
+- `tvod` is the timing used by `avidmux` and `opencv`
+- `tav` is the timing of the `vod` using the `av` library.
 
-### DataFrames (all are per-round)
+### DataFrames (per game)
 - `evdf` is the pandas DataFrame containing the cleaned events. It is computed from a
   `*_events.json`.
 - `codf` is the massive pandas DataFrame containing the players coordinates 128 ticks/s.
@@ -90,6 +92,10 @@ This will be useful to reduce the number of convolutions by focusing where the m
   connection and deconnections of players. Is is computed from a `*_compo.json`
 - `iconsdf` is the pandas DataFrame containg the coordinates of the players of the minimap.
   It is computed from a geojson.
+
+### DataFrames (all games)
+- `rdv` is the pandas DataFrame containing the rounds from all games. It is computed from the
+  `evdf` DataFrames.
 
 <!-- ******************************************************************************************* -->
 

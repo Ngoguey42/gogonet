@@ -86,26 +86,30 @@ ENCOUNTERS = (
         oname="ESL_0",
         hltv_url="https://www.hltv.org/matches/2343670/big-vs-godsent-esl-pro-league-season-12-europe",
         vod_url="https://www.twitch.tv/videos/742919310",
-        vod_framerate=60,
+        vod_framerate=59.94006023456136,
         vod_height=1080,
         vod_slice_start=_t("00:55:00.000"),
         vod_slice_end=_t("05:00:00.000"),
         vod_file_start_offset=_t("00:00:01.711"),
+        first_keyframe_tvod=_t("00:00:01.711"),
+        first_keyframe_tav=_t("00:00:01.581"),
         total_games=3,
-        kept_game_indices=(0, 1, 2),
+        # kept_game_indices=(0, 1, 2),
     ),
     dict(
         ename="2343922_gambit-youngsters-vs-sprout-nine-to-five-4",
         oname="9to5_0",
         hltv_url="https://www.hltv.org/matches/2343922/gambit-youngsters-vs-sprout-nine-to-five-4",
         vod_url="https://www.twitch.tv/videos/741603761",
-        vod_framerate=50,
+        vod_framerate=50.0,
         vod_height=1080,
         vod_slice_start=_t("00:25:00.000"),
         vod_slice_end=_t("04:10:00.000"),
         vod_file_start_offset=_t("00:00:03.088"),
+        first_keyframe_tvod=_t("00:00:03.088"),
+        first_keyframe_tav=_t("00:00:02.960"),
         total_games=3,
-        kept_game_indices=(0, 1, 2),
+        # kept_game_indices=(0, 1, 2),
     ),
 
     # Second batch******************************************************************************* **
@@ -114,26 +118,30 @@ ENCOUNTERS = (
         oname="ESL_0",
         hltv_url="https://www.hltv.org/matches/2343666/vitality-vs-fnatic-esl-pro-league-season-12-europe",
         vod_url="https://www.twitch.tv/videos/741690460",
-        vod_framerate=60,
+        vod_framerate=59.94006057443512,
         vod_height=1080,
         vod_slice_start=_t("04:15:00.000"),
         vod_slice_end=_t("06:35:00.000"),
         vod_file_start_offset=_t("00:00:01.340"),
+        first_keyframe_tvod=_t("00:00:01.340"),
+        first_keyframe_tav=_t("00:00:01.219"),
         total_games=2,
-        kept_game_indices=(0, 1),
+        # kept_game_indices=(0, 1),
     ),
     dict(
         ename="2343663_natus-vincere-vs-og-esl-pro-league-season-12-europe",
         oname="ESL_0",
         hltv_url="https://www.hltv.org/matches/2343663/natus-vincere-vs-og-esl-pro-league-season-12-europe",
         vod_url="https://www.twitch.tv/videos/739846263",
-        vod_framerate=60,
+        vod_framerate=59.94005742125734,
         vod_height=1080,
         vod_slice_start=_t("04:45:00.000"),
         vod_slice_end=_t("06:55:00.000"),
         vod_file_start_offset=_t("00:00:00.033"),
+        first_keyframe_tvod=_t("00:00:02.018"),
+        first_keyframe_tav=_t("00:00:01.868"),
         total_games=3,
-        kept_game_indices=(0, 1),
+        # kept_game_indices=(0, 1),
     ),
 )
 ENCOUNTERS = _toser({
@@ -363,6 +371,24 @@ GAMES = _toser({
     (d["ename"], d["idx_in_encounter"]): d
     for d in GAMES
 })
+def _inflate():
+    for e in ENCOUNTERS.values:
+        e["kept_game_indices"] = []
+        e["game_indices_of_mname"] = {}
+        e["games"] = []
+    for g in GAMES.values:
+        i = g.idx_in_encounter
+        m = g.mname
+        e = ENCOUNTERS[g.ename]
+        e["kept_game_indices"].append(i)
+        assert m not in e["game_indices_of_mname"]
+        e["game_indices_of_mname"][m] = i
+        e["games"].append(g)
+    e["games"] = tuple(sorted(e.games, key=lambda g: g.idx_in_encounter))
+    e["kept_game_indices"] = tuple(sorted(e.kept_game_indices))
+
+_inflate()
+
 
 def _test():
     for g in GAMES:

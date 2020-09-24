@@ -3,6 +3,7 @@
 import json
 from pprint import pprint
 import os
+import datetime
 
 import numpy as np
 import pandas as pd
@@ -87,91 +88,6 @@ def time_totxt(v):
     s = (v - h * 3600 - m * 60)
     return f"{sign}{h:02.0f}:{m:02.0f}:{s:06.3f}"
 
-def load_codf(ename, egidx):
-    prefix = con.DB_PREFIX[os.path.sep]
-    mname = con.GAMES[(ename, egidx)].mname
-    path = os.path.join(prefix, f"{ename}_{egidx}_{mname}_coords.json")
-
-    j = open(path).read()
-    l = json.loads(j)
-
-    rows = []
-    for t, pinfos in l:
-        for pname, [alive, x, y, z] in pinfos.items():
-            if not alive:
-                continue
-            rows.append(dict(
-                x=x, y=y, z=z, t=t, pname=pname,
-            ))
-    codf = pd.DataFrame(rows).set_index(["t", "pname"], verify_integrity=True)
-    codf = codf.reset_index()
-    return codf
-
-def load_evdf(ename, egidx):
-    prefix = con.DB_PREFIX[os.path.sep]
-    mname = con.GAMES[(ename, egidx)].mname
-    path = os.path.join(prefix, f"{ename}_{egidx}_{mname}_events.json")
-
-    j = open(path).read()
-    j = json.loads(j)
-
-    rows = []
-    for r in segment_rounds(j):
-        round_idx = r.pop("round_idx")
-        rows.extend([
-            dict(ev=k, t=v, round_idx=round_idx)
-            for k, v in r.items()
-        ])
-    evdf = pd.DataFrame(rows)
-    return evdf
-
-def load_compodf(ename, egidx):
-    prefix = con.DB_PREFIX[os.path.sep]
-    mname = con.GAMES[(ename, egidx)].mname
-    path = os.path.join(prefix, f"{ename}_{egidx}_{mname}_compo.json")
-
-    j = open(path).read()
-    j = json.loads(j)
-
-    rows = []
-    for r in j:
-        rows.append({
-            "t": r["t"],
-            "terro": tuple(r["terro"]),
-            "ct": tuple(r["ct"]),
-            "terro_count": len(r["terro"]),
-            "ct_count": len(r["ct"]),
-        })
-    compodf = pd.DataFrame(rows)
-    return compodf
-
-def load_iconsdf(ename, egidx):
-    ginfo = con.GAMES[(ename, egidx)]
-    tvod = ginfo.annotated_vod_frame
-    path = os.path.join(
-        con.DB_PREFIX[os.path.sep],
-        "mm_localisation",
-        f"{ename}_{egidx}_{ginfo.mname}_{time_totxt(tvod).replace(':', '-')}.geojson",
-    )
-    j = json.loads(open(path).read()) # May raise in normal use-cases
-    iconsdf = pd.DataFrame([
-        dict(
-            label=int(ft["properties"]["label"]),
-            x=x,
-            y=y,
-        )
-        for ft in j["features"]
-        # [1, -1] to correct the y flip from QGis
-        # -0.5 to correct the fact that qgis treats pixels as points (and not areas)
-        for (x, y) in [np.asarray(ft["geometry"]["coordinates"][0]).mean(axis=0) * [1, -1] - 0.5]
-    ])
-    iconsdf["label"] = iconsdf.label.apply(lambda lab : lab if lab != 0 else 10)
-    iconsdf["pname"] = iconsdf.label.apply(lambda lab: ginfo.players_order[lab - 1])
-    iconsdf = iconsdf.sort_values("label")
-    assert len(iconsdf.label) == len(set(iconsdf.label))
-    assert (iconsdf.label >= 1).all()
-    assert (iconsdf.label <= 10).all()
-    return iconsdf
 
 def create_tdem_classifier(evdf):
     tree = intervaltree.IntervalTree()
@@ -325,6 +241,8 @@ def create_timestamp_conversions(evdf, anchors):
 
     def to_tdem(tvod):
         """Not monotonic because of breaks, surjective"""
+        if not np.isfinite(tvod):
+            return tvod
         for i, (start, end) in enumerate(tvod_intervals):
             if start <= tvod <= end:
                 return to_tdems[i](tvod)
@@ -332,9 +250,176 @@ def create_timestamp_conversions(evdf, anchors):
 
     def to_tvod(tdem):
         """Monotonic, injective"""
+        if not np.isfinite(tdem):
+            return tdem
         for i, (start, end) in enumerate(tdem_intervals):
             if start <= tdem <= end:
                 return to_tvods[i](tdem)
         assert False, "unreachable"
 
     return to_tvod, to_tdem
+
+def load_codf(ename, egidx):
+    prefix = con.DB_PREFIX[os.path.sep]
+    mname = con.GAMES[(ename, egidx)].mname
+    path = os.path.join(prefix, f"{ename}_{egidx}_{mname}_coords.json")
+
+    j = open(path).read()
+    l = json.loads(j)
+
+    rows = []
+    for t, pinfos in l:
+        for pname, [alive, x, y, z] in pinfos.items():
+            if not alive:
+                continue
+            rows.append(dict(
+                x=x, y=y, z=z, t=t, pname=pname,
+            ))
+    codf = pd.DataFrame(rows).set_index(["t", "pname"], verify_integrity=True)
+    codf = codf.reset_index()
+    return codf
+
+def load_evdf(ename, egidx):
+    prefix = con.DB_PREFIX[os.path.sep]
+    mname = con.GAMES[(ename, egidx)].mname
+    path = os.path.join(prefix, f"{ename}_{egidx}_{mname}_events.json")
+
+    j = open(path).read()
+    j = json.loads(j)
+
+    rows = []
+    for r in segment_rounds(j):
+        round_idx = r.pop("round_idx")
+        rows.extend([
+            dict(ev=k, t=v, round_idx=round_idx)
+            for k, v in r.items()
+        ])
+    evdf = pd.DataFrame(rows)
+    return evdf
+
+def load_compodf(ename, egidx):
+    prefix = con.DB_PREFIX[os.path.sep]
+    mname = con.GAMES[(ename, egidx)].mname
+    path = os.path.join(prefix, f"{ename}_{egidx}_{mname}_compo.json")
+
+    j = open(path).read()
+    j = json.loads(j)
+
+    rows = []
+    for r in j:
+        rows.append({
+            "t": r["t"],
+            "terro": tuple(r["terro"]),
+            "ct": tuple(r["ct"]),
+            "terro_count": len(r["terro"]),
+            "ct_count": len(r["ct"]),
+        })
+    compodf = pd.DataFrame(rows)
+    return compodf
+
+def load_iconsdf(ename, egidx):
+    ginfo = con.GAMES[(ename, egidx)]
+    tvod = ginfo.annotated_vod_frame
+    path = os.path.join(
+        con.DB_PREFIX[os.path.sep],
+        "mm_localisation",
+        f"{ename}_{egidx}_{ginfo.mname}_{time_totxt(tvod).replace(':', '-')}.geojson",
+    )
+    j = json.loads(open(path).read()) # May raise in normal use-cases
+    iconsdf = pd.DataFrame([
+        dict(
+            label=int(ft["properties"]["label"]),
+            x=x,
+            y=y,
+        )
+        for ft in j["features"]
+        # [1, -1] to correct the y flip from QGis
+        # -0.5 to correct the fact that qgis treats pixels as points (and not areas)
+        for (x, y) in [np.asarray(ft["geometry"]["coordinates"][0]).mean(axis=0) * [1, -1] - 0.5]
+    ])
+    iconsdf["label"] = iconsdf.label.apply(lambda lab : lab if lab != 0 else 10)
+    iconsdf["pname"] = iconsdf.label.apply(lambda lab: ginfo.players_order[lab - 1])
+    iconsdf = iconsdf.sort_values("label")
+    assert len(iconsdf.label) == len(set(iconsdf.label))
+    assert (iconsdf.label >= 1).all()
+    assert (iconsdf.label <= 10).all()
+    return iconsdf
+
+def load_rdf(bomb_events=False):
+    dfs = []
+    for ginfo in con.GAMES.values:
+        # TODO: Test/train set
+        evdf = load_evdf(ginfo.ename, ginfo.idx_in_encounter)
+        to_tvod, _ = create_timestamp_conversions(evdf, ginfo.vod_anchors)
+        # evdf = evdf.set_index(["round_idx"])
+        df = evdf.pivot(index="round_idx", columns="ev", values="t").reset_index()
+        df.columns.name = ""
+        # df["partial_minimap"] = df.loc[[i not in ginfo.partial_minimap_rounds for i in df.round_idx]]
+
+        df["partial_minimap"] = df.round_idx.apply(lambda i: i in ginfo.partial_minimap_rounds)
+        for c in ["bomb_defused", "bomb_planted", "bomb_exploded"]:
+            if c not in df.columns:
+                df[c] = np.nan
+        df.rename(columns=dict(
+            round_end="tdem_end", round_freeze_end="tdem_freeze_end", round_start="tdem_start",
+            bomb_defused="tdem_bomb_defused", bomb_exploded="tdem_bomb_exploded",
+            bomb_planted="tdem_bomb_planted",
+        ), inplace=True)
+        df["len"] = df.tdem_end - df.tdem_freeze_end
+        df["tvod_end"] = df.tdem_end.apply(to_tvod)
+        df["tvod_start"] = df.tdem_start.apply(to_tvod)
+        df["tvod_freeze_end"] = df.tdem_freeze_end.apply(to_tvod)
+        df["tvod_bomb_planted"] = df.tdem_bomb_planted.apply(to_tvod)
+        df["tvod_bomb_defused"] = df.tdem_bomb_defused.apply(to_tvod)
+        df["tvod_bomb_exploded"] = df.tdem_bomb_exploded.apply(to_tvod)
+
+        if not bomb_events:
+            df = df[[c for c in df.columns if "bomb" not in c]]
+
+        df["ename"] = ginfo.ename
+        df["egidx"] = ginfo.idx_in_encounter
+        dfs.append(df)
+
+    df = pd.concat(dfs).reset_index(drop=True)
+    return df
+
+class T():
+    """Timer"""
+    def __init__(self):
+        self.touch_count = 0
+        self.t0, self.t1 = None, None
+        self.seconds = 0.
+    def touch(self):
+        self.touch_count += 1
+    def __enter__(self):
+        self.t0 = datetime.datetime.now()
+        return self
+    def __exit__(self, *_):
+        self.touch()
+        self.t1 = datetime.datetime.now()
+        self.seconds += (self.t1 - self.t0).total_seconds()
+        self.t0 = None
+        self.t1 = None
+    def __iadd__(self, this):
+        self.touch()
+        self.seconds += this.seconds
+        return self
+    def __str__(self):
+        def f(v):
+            sign = "" if (v >= 0) else "-"
+            v = abs(v)
+            h = v // 3600
+            m = (v - h * 3600) // 60
+            s = (v - h * 3600 - m * 60)
+            t = f"{h:02.0f}:{m:02.0f}:{s:012.9f}"
+            # 012345678901234567
+            # 00:00:10.020003040
+            t = sign + t[0:7].lstrip(":0") + t[7:]
+            # ------10.020003040
+            t = t[:8]
+            # ------10.02000----
+            return t
+        s = f(self.seconds)
+        if self.touch_count > 0:
+            s += f' ({f(self.seconds / self.touch_count)} * {self.touch_count})'
+        return s
